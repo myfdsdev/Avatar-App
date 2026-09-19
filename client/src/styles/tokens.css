@@ -1,0 +1,109 @@
+/**
+ * Design tokens.
+ *
+ * Modelled on LemonSlice: a warm near-black surface stack, generous corner
+ * radii, borders that are lifted rather than drawn, and Inter for everything
+ * including headings. Nothing is sharp and nothing shouts.
+ *
+ * An earlier revision used Tavus's visual language instead - square corners,
+ * hard 1px rules, offset shadows, a display serif. That is deliberately gone;
+ * only Tavus's dashboard *structure* was kept.
+ *
+ * Single source of truth - tailwind.config.js maps these, nothing hardcodes hex.
+ */
+
+:root {
+  /* ---- surfaces ---- */
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-2: #1c1c1c;
+  --surface-3: #242424;
+  --surface-hover: rgba(255, 255, 255, 0.04);
+  --surface-active: rgba(255, 255, 255, 0.08);
+
+  /* ---- text ---- */
+  --text: #f4f3f0;
+  --text-muted: #a3a3a3;
+  --text-faint: rgba(244, 243, 240, 0.5);
+  --text-inverse: #0a0a0a;
+
+  /* ---- borders ----
+     Lifted, not darkened. On black a border reads as a highlight. */
+  --border: #242424;
+  --border-strong: #343434;
+  --border-faint: rgba(255, 255, 255, 0.08);
+
+  /* ---- accents ---- */
+  --pink: #f97583;
+  --pink-soft: #ff8ba6;
+  --pink-dim: rgba(249, 117, 131, 0.12);
+  --green: #38f261;
+  --green-dim: rgba(56, 242, 97, 0.12);
+  --purple: #b392f0;
+  --blue: #9ecbff;
+  --yellow: #fff130;
+  --red: #ef4444;
+
+  /* ---- shape ----
+     Rounded throughout. 12px is the workhorse; cards and panels go larger. */
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 9999px;
+
+  /* ---- elevation ----
+     Soft and low. Depth comes from the surface stack, not from shadow. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+
+  /* ---- spacing ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* ---- typography ----
+     Inter for everything. Headings are weight 500 at a relaxed line height,
+     not a tight display face. */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-h1: 36px;
+  --text-h1-lh: 1.25;
+  --text-h2: 24px;
+  --text-h3: 18px;
+  --text-body: 16px;
+  --text-body-lh: 1.5;
+  --text-ui: 14px;
+  --text-sm: 13px;
+  --text-label: 12px;
+
+  --weight-heading: 500;
+  --weight-medium: 500;
+
+  /* ---- layout ---- */
+  --sidebar-w: 232px;
+  /* Wide on purpose. Capped at 1120 the content left a third of a large screen
+     empty beside the sidebar, which made the hero look small on the page it is
+     supposed to dominate. */
+  --container: 1400px;
+  /* Generous, and it never collapses: below the container width mx-auto has no
+     margin left to give, so this padding is the only thing keeping the heading
+     off the sidebar - which is exactly where it was getting clipped. */
+  --gutter: 48px;
+
+  /* ---- motion ---- */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+}
+
+/* The app is dark by design, not by preference, so prefers-color-scheme is
+   deliberately not wired up. */

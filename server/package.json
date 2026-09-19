@@ -1,0 +1,45 @@
+{
+  "name": "avatar-app-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "agent": "node src/agent/worker.js dev",
+    "workers": "node src/workers/index.js",
+    "validate": "node src/scripts/validate-models.js",
+    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "seed": "node src/scripts/seed.js",
+    "dev:standalone": "node src/scripts/dev-standalone.js",
+    "check": "node src/scripts/check-credentials.js",
+    "agent:start": "node src/agent/worker.js start",
+    "smoke": "node src/scripts/smoke-call.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "@aws-sdk/client-s3": "^3.1135.0",
+    "@livekit/agents": "^1.9.0",
+    "@livekit/agents-plugin-anthropic": "^1.9.0",
+    "@livekit/agents-plugin-lemonslice": "^1.9.0",
+    "@livekit/rtc-node": "^0.13.35",
+    "bcryptjs": "^3.0.3",
+    "bullmq": "^5.34.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.4.2",
+    "jsonwebtoken": "^9.0.2",
+    "livekit-server-sdk": "^2.9.0",
+    "mongoose": "^8.9.3",
+    "multer": "^2.4.0",
+    "pino": "^9.6.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^11.2.0",
+    "pino-pretty": "^13.0.0"
+  }
+}

@@ -1,0 +1,32 @@
+import { Workspace } from "../models/index.js";
+
+/**
+ * Populates req.workspace from the authenticated token.
+ *
+ * Until Phase 4 this fell back to "whichever workspace exists" so the call path
+ * could be developed before auth existed. That fallback is gone - it would have
+ * been a complete tenancy bypass the moment it reached production, and there is
+ * no longer any reason to keep it. Dev convenience now comes from the seed
+ * script printing usable credentials instead.
+ */
+export async function resolveWorkspace(req, res, next) {
+  try {
+    if (!req.auth?.workspaceId) {
+      const err = new Error("Authentication required");
+      err.statusCode = 401;
+      throw err;
+    }
+
+    req.workspace = await Workspace.findById(req.auth.workspaceId);
+
+    if (!req.workspace) {
+      const err = new Error("Workspace no longer exists");
+      err.statusCode = 403;
+      throw err;
+    }
+
+    next();
+  } catch (err) {
+    next(err);
+  }
+}

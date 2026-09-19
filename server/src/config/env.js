@@ -1,0 +1,112 @@
+import "dotenv/config";
+import crypto from "node:crypto";
+
+/**
+ * Every environment read happens here. Modules import the parsed object rather
+ * than touching process.env, so a missing variable fails at boot with a clear
+ * message instead of surfacing as `undefined` deep inside a request.
+ */
+
+const required = (key) => {
+  const value = process.env[key];
+  if (!value) throw new Error(`Missing required env var: ${key}`);
+  return value;
+};
+
+const optional = (key, fallback = "") => process.env[key] || fallback;
+
+const ephemeral = new Map();
+
+function devSecret(kind) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      `Missing JWT_${kind.toUpperCase()}_SECRET. Generate one with: ` +
+        `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`,
+    );
+  }
+  if (!ephemeral.has(kind)) {
+    ephemeral.set(kind, crypto.randomBytes(48).toString("hex"));
+  }
+  return ephemeral.get(kind);
+}
+
+export const env = {
+  nodeEnv: optional("NODE_ENV", "development"),
+  port: Number(optional("PORT", "4000")),
+  clientOrigin: optional("CLIENT_ORIGIN", "http://localhost:5173"),
+
+  mongoUri: optional("MONGO_URI", "mongodb://localhost:27017/avatar_app"),
+  redisUrl: optional("REDIS_URL", "redis://localhost:6379"),
+
+  jwt: {
+    // Empty secrets would make jwt.sign throw on the first request. In
+    // development an ephemeral pair keeps a fresh clone working; in production
+    // a missing secret is fatal, because generating one per process would
+    // silently sign out every user on each deploy and break multi-instance.
+    accessSecret: optional("JWT_ACCESS_SECRET") || devSecret("access"),
+    refreshSecret: optional("JWT_REFRESH_SECRET") || devSecret("refresh"),
+    accessTtl: optional("JWT_ACCESS_TTL", "15m"),
+    refreshTtl: optional("JWT_REFRESH_TTL", "30d"),
+  },
+
+  // Deliberately no default. Defaulting to the stub meant every install
+  // silently preferred it over real, configured vendors - including ones where
+  // someone had paid for a key. Unset now means "pick the cheapest real vendor",
+  // and a fresh clone with no keys gets an error naming the fix instead of a
+  // fake avatar that looks real.
+  avatarProvider: optional("AVATAR_PROVIDER"),
+  lemonsliceApiKey: optional("LEMONSLICE_API_KEY"),
+  tavusApiKey: optional("TAVUS_API_KEY"),
+  tavusModel: optional("TAVUS_MODEL", "phoenix-4.5"),
+  // A face trained from a still has no audio to learn a voice from, so Tavus
+  // requires one to be named explicitly.
+  tavusDefaultVoice: optional("TAVUS_DEFAULT_VOICE", "Rio"),
+
+  maxCallSeconds: Number(optional("MAX_CALL_SECONDS", "3600")),
+
+  // Tavus does not sign its webhooks, so the callback URL carries an
+  // unguessable token and we verify that instead. See webhooks/provider.webhook.js.
+  webhookSecret: optional("WEBHOOK_SECRET"),
+
+  livekit: {
+    url: optional("LIVEKIT_URL"),
+    apiKey: optional("LIVEKIT_API_KEY"),
+    apiSecret: optional("LIVEKIT_API_SECRET"),
+    agentName: optional("AGENT_NAME", "avatar-agent"),
+  },
+
+  deepgramApiKey: optional("DEEPGRAM_API_KEY"),
+  cartesiaApiKey: optional("CARTESIA_API_KEY"),
+  anthropicApiKey: optional("ANTHROPIC_API_KEY"),
+  defaultLlmModel: optional("DEFAULT_LLM_MODEL", "claude-sonnet-5"),
+  // LiveKit Inference has no Anthropic models, so the no-key path needs a
+  // hosted id in "provider/model" form rather than the Claude id above.
+  fallbackLlmModel: optional("FALLBACK_LLM_MODEL", "google/gemma-4-31b-it"),
+  sttModel: optional("STT_MODEL", "deepgram/nova-3"),
+  sttLanguage: optional("STT_LANGUAGE", "en"),
+  ttsModel: optional("TTS_MODEL", "inworld/inworld-tts-2"),
+  // Inference TTS requires a voice as well as a model.
+  ttsVoice: optional("TTS_VOICE", "Ashley"),
+
+  // Where the API is reachable from outside. The local storage driver builds
+  // its URLs from this, so a tunnel host belongs here when testing a real vendor.
+  publicBaseUrl: optional("PUBLIC_BASE_URL", `http://localhost:${optional("PORT", "4000")}`),
+
+  storageDriver: optional("STORAGE_DRIVER", "local"),
+  storage: {
+    accountId: optional("R2_ACCOUNT_ID"),
+    accessKeyId: optional("R2_ACCESS_KEY_ID"),
+    secretAccessKey: optional("R2_SECRET_ACCESS_KEY"),
+    bucket: optional("R2_BUCKET"),
+    publicBaseUrl: optional("R2_PUBLIC_BASE_URL"),
+  },
+
+  stripe: {
+    secretKey: optional("STRIPE_SECRET_KEY"),
+    webhookSecret: optional("STRIPE_WEBHOOK_SECRET"),
+  },
+
+  required,
+};
+
+export const isProd = env.nodeEnv === "production";

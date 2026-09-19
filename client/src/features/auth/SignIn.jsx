@@ -1,0 +1,106 @@
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
+import { authApi } from "@/services/auth.api";
+import { useAuth } from "@/store/auth.store";
+import Card from "@/components/common/Card";
+import Button from "@/components/common/Button";
+import Field from "@/components/forms/Field";
+
+/**
+ * Sign in and sign up share a form because they differ by one field and one
+ * endpoint; two near-identical components would drift.
+ *
+ * Rendered outside the app shell - there is no navigation to offer someone who
+ * is not signed in.
+ */
+export default function SignIn({ mode = "login" }) {
+  const isRegister = mode === "register";
+  const navigate = useNavigate();
+  const location = useLocation();
+  const setSession = useAuth((s) => s.setSession);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+
+  const submit = useMutation({
+    mutationFn: () =>
+      isRegister
+        ? authApi.register({ email, password, name: name || undefined })
+        : authApi.login({ email, password }),
+    onSuccess: (session) => {
+      setSession(session);
+      // Return them to whatever they were trying to reach.
+      navigate(location.state?.from || "/", { replace: true });
+    },
+  });
+
+  const canSubmit = email.trim() && password.length >= (isRegister ? 10 : 1) && !submit.isPending;
+
+  return (
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-gutter py-16">
+      <div className="mb-8 flex items-center gap-2">
+        <span className="h-6 w-6 rounded bg-pink" aria-hidden />
+        <span className="font-medium">Avatar App</span>
+      </div>
+
+      <h1>{isRegister ? "Create your workspace" : "Sign in"}</h1>
+      <p className="mt-2 text-text-muted">
+        {isRegister
+          ? "One account, one workspace, avatars you can call."
+          : "Welcome back."}
+      </p>
+
+      <Card className="mt-8">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canSubmit) submit.mutate();
+          }}
+        >
+          {isRegister && (
+            <Field label="Name" value={name} onChange={setName} placeholder="Krishna" />
+          )}
+
+          <Field
+            label="Email"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            placeholder="you@example.com"
+            autoComplete="email"
+          />
+
+          <Field
+            label="Password"
+            type="password"
+            value={password}
+            onChange={setPassword}
+            autoComplete={isRegister ? "new-password" : "current-password"}
+            hint={isRegister ? "At least 10 characters" : undefined}
+          />
+
+          {submit.isError && (
+            <p className="mt-5 rounded border border-red/40 bg-red/10 px-4 py-3 text-ui text-red">
+              {submit.error.message}
+            </p>
+          )}
+
+          <div className="mt-6">
+            <Button type="submit" size="lg" disabled={!canSubmit} fullWidth>
+              {submit.isPending ? "Working…" : isRegister ? "Create account" : "Sign in"}
+            </Button>
+          </div>
+        </form>
+      </Card>
+
+      <p className="mt-6 text-ui text-text-muted">
+        {isRegister ? "Already have an account? " : "No account yet? "}
+        <Link to={isRegister ? "/login" : "/register"} className="text-pink hover:underline">
+          {isRegister ? "Sign in" : "Create one"}
+        </Link>
+      </p>
+    </main>
+  );
+}

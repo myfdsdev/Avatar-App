@@ -1,0 +1,49 @@
+# Local infra for development. Application code runs on the host.
+services:
+  mongo:
+    image: mongo:7
+    container_name: avatar-app-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: avatar-app-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Self-hosted LiveKit in dev mode. Uses the well-known devkey/secret pair, so
+  # the whole call path works locally with no LiveKit Cloud account.
+  # Note: LiveKit Inference (hosted STT/LLM/TTS) is a Cloud feature and is NOT
+  # available here - see server/src/agent/pipeline.js.
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: avatar-app-livekit
+    command: --dev --bind 0.0.0.0
+    ports:
+      - "7880:7880"      # signaling / websocket
+      - "7881:7881"      # TURN over TCP
+      - "7882:7882/udp"  # RTC over UDP
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:7880"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo-data:
+  redis-data:

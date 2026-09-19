@@ -1,0 +1,19 @@
+{
+  "name": "avatar-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive AI avatar platform - realtime conversation, photo and video-cloned avatars",
+  "scripts": {
+    "dev": "concurrently -n client,server,agent -c magenta,cyan,green \"npm:dev:client\" \"npm:dev:server\" \"npm:dev:agent\"",
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "dev:agent": "npm --prefix server run agent",
+    "install:all": "npm install && npm --prefix client install && npm --prefix server install",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "validate": "npm --prefix server run validate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
