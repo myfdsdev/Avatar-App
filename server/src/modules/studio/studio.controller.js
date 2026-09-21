@@ -16,6 +16,7 @@ export const studioController = {
       providerId: req.body.providerId,
       providerAvatarId: req.body.providerAvatarId,
       name: req.body.name,
+      behaviour: req.body.behaviour,
       userId: req.auth?.userId,
     });
     res.status(201).json({ avatar });
@@ -27,6 +28,9 @@ export const studioController = {
       file: req.file,
       name: req.body.name,
       providerId: req.body.providerId,
+      behaviour: req.body.behaviour,
+      behaviour: req.body.behaviour,
+      behaviour: req.body.behaviour,
       userId: req.auth?.userId,
     });
     // 202: accepted, but not finished - training resolves asynchronously.
@@ -39,6 +43,9 @@ export const studioController = {
       file: req.file,
       name: req.body.name,
       providerId: req.body.providerId,
+      behaviour: req.body.behaviour,
+      behaviour: req.body.behaviour,
+      behaviour: req.body.behaviour,
       userId: req.auth?.userId,
     });
     res.status(201).json({ avatar });

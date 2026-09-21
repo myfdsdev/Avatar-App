@@ -35,7 +35,7 @@ export default function AvatarList() {
       {avatars?.length === 0 && (
         <Card className="py-12 text-center">
           <p className="text-text-muted">No avatars yet.</p>
-          <div className="mt-5 flex justify-center">
+          <div className="mt-4 flex justify-center">
             <Button as={Link} to="/studio">
               Create your first
             </Button>
@@ -63,7 +63,7 @@ function AvatarCard({ avatar }) {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-5">
+      <div className="flex flex-1 flex-col p-4">
         <h3 className="truncate">{avatar.name}</h3>
         <p className="mt-1 text-ui text-text-muted">
           {avatar.sourceType} · {avatar.providerId}
@@ -76,7 +76,7 @@ function AvatarCard({ avatar }) {
           <p className="mt-2 text-ui text-text-faint">{avatar.unavailableReason}</p>
         )}
 
-        <div className="mt-5 flex-1" />
+        <div className="mt-4 flex-1" />
         <Button
           as={Link}
           to={`/call/${avatar._id}`}

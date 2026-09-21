@@ -3,20 +3,22 @@ import { useQuery } from "@tanstack/react-query";
 import { studioApi } from "@/services/studio.api";
 import MediaPreview from "@/components/media/MediaPreview";
 import Card from "@/components/common/Card";
-import Button from "@/components/common/Button";
 
 /**
- * Pick one of the vendor's own pre-trained avatars.
+ * Browse the vendor's own pre-trained avatars.
  *
- * Worth its own flow rather than a provider option: nothing is uploaded and
- * nothing is trained, so none of the upload UI applies - and on plans where
- * training is a paid feature, this is the only route to a working avatar.
+ * Purely a chooser: picking one hands it upward and the brief is collected in a
+ * dialog. Keeping the two apart means the grid can stay large and scrollable
+ * without a form competing with it for the page.
+ *
+ * Worth its own flow rather than a provider option - nothing is uploaded and
+ * nothing is trained, and on plans where training is a paid feature this is the
+ * only route to a working avatar.
  */
-export default function StockPicker({ onAdopt, adopting, error }) {
+export default function StockPicker({ onChoose }) {
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState(null);
 
-  const { data: avatars, isLoading, error: loadError } = useQuery({
+  const { data: avatars, isLoading, error } = useQuery({
     queryKey: ["stock-avatars"],
     queryFn: studioApi.stock,
     // The vendor's catalogue barely changes; refetching on every visit is waste.
@@ -30,12 +32,12 @@ export default function StockPicker({ onAdopt, adopting, error }) {
   }, [avatars, query]);
 
   if (isLoading) return <Note>Loading ready-made avatars…</Note>;
-  if (loadError) return <Note>{loadError.message}</Note>;
+  if (error) return <Note>{error.message}</Note>;
   if (!avatars?.length) return <Note>No vendor on this install offers ready-made avatars.</Note>;
 
   return (
     <>
-      <div className="mt-6 flex items-center justify-between gap-4">
+      <div className="mt-5 flex items-center justify-between gap-4">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -47,39 +49,21 @@ export default function StockPicker({ onAdopt, adopting, error }) {
         </p>
       </div>
 
-      <div className="mt-4 grid max-h-[520px] grid-cols-2 gap-4 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-4">
-        {filtered.map((avatar) => {
-          const isSelected = selected?.providerAvatarId === avatar.providerAvatarId;
-          return (
-            <button
-              key={`${avatar.providerId}:${avatar.providerAvatarId}`}
-              type="button"
-              onClick={() => setSelected(avatar)}
-              className={`overflow-hidden rounded-lg border text-left transition-colors ${
-                isSelected ? "border-pink" : "border-border hover:border-border-strong"
-              }`}
-            >
-              <MediaPreview src={avatar.previewUrl} className="aspect-[3/4] w-full" />
-              <div className="p-3">
-                <p className="truncate text-ui">{avatar.name}</p>
-                <p className="mt-0.5 truncate text-ui text-text-faint">{avatar.providerId}</p>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {error && (
-        <p className="mt-4 rounded border border-red/40 bg-red/10 px-4 py-3 text-ui text-red">
-          {error.message}
-        </p>
-      )}
-
-      <div className="mt-6 flex items-center gap-3">
-        <Button onClick={() => onAdopt(selected)} disabled={!selected || adopting}>
-          {adopting ? "Adding…" : "Use this avatar"}
-        </Button>
-        {selected && <span className="text-ui text-text-muted">{selected.name}</span>}
+      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {filtered.map((avatar) => (
+          <button
+            key={`${avatar.providerId}:${avatar.providerAvatarId}`}
+            type="button"
+            onClick={() => onChoose(avatar)}
+            className="overflow-hidden rounded-lg border border-border text-left transition-colors hover:border-border-strong"
+          >
+            <MediaPreview src={avatar.previewUrl} className="aspect-[3/4] w-full" />
+            <div className="p-3">
+              <p className="truncate text-ui">{avatar.name}</p>
+              <p className="mt-0.5 truncate text-ui text-text-faint">{avatar.providerId}</p>
+            </div>
+          </button>
+        ))}
       </div>
     </>
   );

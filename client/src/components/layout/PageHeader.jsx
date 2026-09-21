@@ -6,10 +6,10 @@
  */
 export default function PageHeader({ title, description, action }) {
   return (
-    <header className="mb-8 flex items-start justify-between gap-6">
+    <header className="mb-6 flex items-start justify-between gap-6">
       <div>
         <h1>{title}</h1>
-        {description && <p className="mt-2 text-text-muted">{description}</p>}
+        {description && <p className="mt-1.5 text-text-muted">{description}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </header>

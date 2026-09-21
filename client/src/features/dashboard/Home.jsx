@@ -42,7 +42,7 @@ export default function Home() {
         Build <span className="text-pink">a conversational agent</span>
         {featured ? ` with ${featured.name}` : " in minutes"}
       </h1>
-      <p className="mt-4 max-w-2xl text-text-muted">
+      <p className="mt-3 max-w-2xl text-text-muted">
         No need to start from scratch. Pick a face, give it a brief, and talk to it in the browser.
       </p>
 
@@ -51,7 +51,7 @@ export default function Home() {
       <Section
         label="Go live in minutes"
         title="Three ways to get a face"
-        className="mt-20"
+        className="mt-12"
       >
         <div className="grid gap-4 sm:grid-cols-3">
           <Step
@@ -62,7 +62,7 @@ export default function Home() {
           <Step n="2" title="Photo" body="One still image becomes an avatar. No training step." />
           <Step n="3" title="Video clone" body="A short clip trains a likeness of a real person." />
         </div>
-        <div className="mt-5">
+        <div className="mt-4">
           <Button as={Link} to="/studio">
             Create an avatar
           </Button>
@@ -70,7 +70,7 @@ export default function Home() {
       </Section>
 
       {avatars?.length > 0 && (
-        <Section label="Your workspace" title="Avatars" className="mt-20">
+        <Section label="Your workspace" title="Avatars" className="mt-12">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {avatars.slice(0, 8).map((a) => (
               <Link
@@ -89,7 +89,7 @@ export default function Home() {
       )}
 
       {health && (
-        <p className="mt-20 text-ui text-text-faint">
+        <p className="mt-12 text-ui text-text-faint">
           {health.avatarProvider || "automatic"} · livekit {health.livekit.mode} · storage{" "}
           {health.storage?.driver}
         </p>
@@ -106,8 +106,8 @@ export default function Home() {
  */
 function Hero({ name, previewUrl, to, owned }) {
   return (
-    <div className="relative mt-10 overflow-hidden rounded-xl border border-border bg-surface-2">
-      <MediaPreview src={previewUrl} className="aspect-[16/9] w-full" />
+    <div className="relative mt-8 overflow-hidden rounded-xl border border-border bg-surface-2">
+      <MediaPreview src={previewUrl} className="aspect-video w-full" />
 
       {/* Name badge, top left. */}
       <span className="absolute left-5 top-5 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-ui font-medium backdrop-blur">
@@ -138,8 +138,8 @@ function Section({ label, title, className, children }) {
   return (
     <section className={className}>
       <p className="font-mono text-label uppercase tracking-wide text-pink">{label}</p>
-      <h2 className="mt-2">{title}</h2>
-      <div className="mt-5">{children}</div>
+      <h2 className="mt-1.5">{title}</h2>
+      <div className="mt-4">{children}</div>
     </section>
   );
 }

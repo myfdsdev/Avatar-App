@@ -26,14 +26,14 @@ export default function Card({
     <div
       className={clsx(
         "rounded-lg border border-border bg-surface",
-        flush ? "overflow-hidden" : "p-5",
+        flush ? "overflow-hidden" : "p-4",
         hover && "transition-colors duration-[var(--dur-fast)] hover:border-border-strong",
         className,
       )}
       {...rest}
     >
       {(title || action) && (
-        <div className={clsx("flex items-center justify-between gap-3", flush && "px-5 pt-5")}>
+        <div className={clsx("flex items-center justify-between gap-3", flush && "px-4 pt-4")}>
           {title ? <h3 className="text-ui text-text-muted">{title}</h3> : <span />}
           {action}
         </div>

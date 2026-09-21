@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import path from "node:path";
-import { Avatar, AvatarAsset } from "../../models/index.js";
+import { Avatar, AvatarAsset, Persona } from "../../models/index.js";
 import {
   availableProviderIds,
   getProvider,
@@ -31,8 +31,49 @@ const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
  * bytes from us. Doing it the other way round - register, then upload - is the
  * obvious sequence and does not work.
  */
+/**
+ * Offered languages. Kept server-side so the list cannot drift from what the
+ * speech models are actually configured for.
+ */
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "hi", label: "Hindi" },
+  { code: "es", label: "Spanish" },
+  { code: "fr", label: "French" },
+  { code: "de", label: "German" },
+  { code: "pt", label: "Portuguese" },
+  { code: "ja", label: "Japanese" },
+];
+
+const DEFAULT_PROMPT =
+  "You are a friendly AI avatar speaking with someone over video. " +
+  "Keep replies to two or three sentences and sound like a person, not a brochure.";
+
+/**
+ * Behaviour is stored as a Persona rather than on the Avatar.
+ *
+ * The same brief is worth reusing across faces - and the split matters at call
+ * time, because a render-only vendor gets the prompt via our language model
+ * while a full-pipeline vendor gets it in its own session payload. One field on
+ * the avatar would have hidden that difference.
+ */
+async function createPersona({ workspace, name, behaviour = {} }) {
+  const { systemPrompt, greeting, language, temperature, motionPrompt, maxCallSeconds } = behaviour;
+
+  return Persona.create({
+    workspaceId: workspace._id,
+    name: `${name} persona`,
+    systemPrompt: systemPrompt?.trim() || DEFAULT_PROMPT,
+    greeting: greeting?.trim() || undefined,
+    language: language || undefined,
+    temperature: temperature ?? undefined,
+    motionPrompt: motionPrompt?.trim() || undefined,
+    maxCallSeconds: maxCallSeconds || undefined,
+  });
+}
+
 export const studioService = {
-  async createFromPhoto({ workspace, file, name, providerId, userId }) {
+  async createFromPhoto({ workspace, file, name, providerId, behaviour, userId }) {
     assertUsableImage(file);
 
     const storage = getStorage();
@@ -68,6 +109,8 @@ export const studioService = {
       throw err;
     }
 
+    const persona = await createPersona({ workspace, name, behaviour });
+
     const avatar = await Avatar.create({
       workspaceId: workspace._id,
       name,
@@ -77,6 +120,7 @@ export const studioService = {
       providerAvatarId: created.providerAvatarId,
       assetId: asset._id,
       previewUrl: created.previewUrl || stored.publicUrl,
+      personaId: persona._id,
       createdBy: userId,
     });
 
@@ -95,7 +139,7 @@ export const studioService = {
    * takes minutes on the vendor's side. The avatar is created in a `training`
    * state with a job attached, and resolves later via webhook or poll.
    */
-  async createFromVideo({ workspace, file, name, providerId, userId }) {
+  async createFromVideo({ workspace, file, name, providerId, behaviour, userId }) {
     assertUsableVideo(file);
 
     const storage = getStorage();
@@ -117,6 +161,8 @@ export const studioService = {
       uploadedBy: userId,
     });
 
+    const persona = await createPersona({ workspace, name, behaviour });
+
     const avatar = await Avatar.create({
       workspaceId: workspace._id,
       name,
@@ -124,6 +170,7 @@ export const studioService = {
       status: "training",
       providerId: provider.id,
       assetId: asset._id,
+      personaId: persona._id,
       createdBy: userId,
     });
 
@@ -149,6 +196,7 @@ export const studioService = {
       await storage.remove(stored.storageKey).catch(() => {});
       await AvatarAsset.deleteOne({ _id: asset._id });
       await Avatar.deleteOne({ _id: avatar._id });
+      await Persona.deleteOne({ _id: persona._id });
       await job.deleteOne();
       throw err;
     }
@@ -205,7 +253,7 @@ export const studioService = {
    * it. Deleting it later must therefore not delete anything on their side -
    * it is not ours to remove.
    */
-  async createFromStock({ workspace, providerId, providerAvatarId, name, userId }) {
+  async createFromStock({ workspace, providerId, providerAvatarId, name, behaviour, userId }) {
     if (!hasStockAvatars(providerId)) {
       throw unprocessable(`Provider "${providerId}" has no ready-made avatars`);
     }
@@ -219,14 +267,18 @@ export const studioService = {
       throw unprocessable(`"${providerAvatarId}" is not one of ${providerId}'s avatars`);
     }
 
+    const resolvedName = name?.trim() || chosen.name;
+    const persona = await createPersona({ workspace, name: resolvedName, behaviour });
+
     const avatar = await Avatar.create({
       workspaceId: workspace._id,
-      name: name?.trim() || chosen.name,
+      name: resolvedName,
       sourceType: "stock",
       status: "ready",
       providerId,
       providerAvatarId,
       previewUrl: chosen.previewUrl,
+      personaId: persona._id,
       createdBy: userId,
     });
 
@@ -270,6 +322,8 @@ export const studioService = {
           usable:
             isConfigured(id) && (storage.reachableByVendors || caps.acceptsDirectUpload),
         })),
+      defaultPrompt: DEFAULT_PROMPT,
+      languages: LANGUAGES,
       limits: {
         photo: { maxBytes: MAX_IMAGE_BYTES, types: [...ALLOWED_IMAGE_TYPES] },
         video: { maxBytes: MAX_VIDEO_BYTES, types: [...ALLOWED_VIDEO_TYPES] },

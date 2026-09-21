@@ -11,7 +11,7 @@ export default function AppShell({ children }) {
     <div className="min-h-screen bg-bg">
       <Sidebar />
       <div className="pl-sidebar">
-        <main className="mx-auto max-w-container px-gutter py-12">{children}</main>
+        <main className="mx-auto max-w-container px-gutter py-9">{children}</main>
       </div>
     </div>
   );

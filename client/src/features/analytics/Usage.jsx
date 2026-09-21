@@ -59,7 +59,7 @@ export default function Usage() {
       </Card>
 
       {data.plan && (
-        <p className="mt-6 text-ui text-text-faint">
+        <p className="mt-5 text-ui text-text-faint">
           Plan {data.plan.name}
           {data.plan.includedMinutes > 0 && ` · ${data.plan.includedMinutes} min included`}
           {` · overage ${data.plan.overageEnabled ? "on" : "off"}`}
@@ -82,7 +82,7 @@ function Stat({ label, value, tone }) {
           <span className="rounded-full bg-green-dim px-2.5 py-1 text-label text-green">Live</span>
         )}
       </div>
-      <p className="mt-3 text-h1 font-medium">{value}</p>
+      <p className="mt-2 text-h1 font-medium">{value}</p>
     </Card>
   );
 }

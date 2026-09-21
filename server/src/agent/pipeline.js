@@ -25,6 +25,7 @@ import { logger } from "../config/logger.js";
  * @param {{ voice?: { providerVoiceId?: string, language?: string } }} [avatar]
  */
 export function buildPipelineConfig(avatar) {
+  const persona = avatar?.persona;
   const cfg = livekitConfig();
 
   if (cfg.isDev) {
@@ -37,12 +38,13 @@ export function buildPipelineConfig(avatar) {
     };
   }
 
-  const llm = buildLlm();
+  const llm = buildLlm(persona);
   const tts = buildTts(avatar);
+  const language = persona?.language || env.sttLanguage;
 
   return {
     available: true,
-    stt: new inference.STT({ model: env.sttModel, language: env.sttLanguage }),
+    stt: new inference.STT({ model: env.sttModel, language }),
     tts: tts.instance,
     llm: llm.instance,
     llmLabel: llm.label,
@@ -51,11 +53,22 @@ export function buildPipelineConfig(avatar) {
   };
 }
 
-function buildLlm() {
+/**
+ * The persona's model and temperature win over the install defaults.
+ *
+ * They were stored from the start and then ignored here, so a brief that asked
+ * for a different model or a steadier tone quietly got neither.
+ */
+function buildLlm(persona) {
   if (env.anthropicApiKey) {
+    const model = persona?.llmModel || env.defaultLlmModel;
     return {
-      instance: new anthropic.LLM({ model: env.defaultLlmModel, apiKey: env.anthropicApiKey }),
-      label: env.defaultLlmModel,
+      instance: new anthropic.LLM({
+        model,
+        apiKey: env.anthropicApiKey,
+        temperature: persona?.temperature,
+      }),
+      label: model,
     };
   }
 
@@ -75,7 +88,7 @@ function buildLlm() {
  */
 function buildTts(avatar) {
   const voice = avatar?.voice?.providerVoiceId || env.ttsVoice;
-  const language = avatar?.voice?.language || env.sttLanguage;
+  const language = avatar?.persona?.language || avatar?.voice?.language || env.sttLanguage;
 
   return {
     instance: new inference.TTS({ model: env.ttsModel, voice, language }),

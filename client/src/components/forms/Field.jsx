@@ -17,7 +17,7 @@ export default function Field({ label, hint, value, onChange, type = "text", id,
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-2 h-10 w-full rounded border border-border bg-bg px-3 text-ui text-text outline-none transition-colors placeholder:text-text-faint focus:border-border-strong"
+        className="mt-2 h-10 w-full rounded border border-border bg-bg px-3 text-ui text-text outline-none transition-colors placeholder:text-text-faint focus:border-border-strong disabled:opacity-40"
         {...rest}
       />
       {hint && <p className="mt-2 text-ui text-text-faint">{hint}</p>}

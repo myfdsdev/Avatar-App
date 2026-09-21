@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { Avatar, Conversation } from "../../models/index.js";
+import { Avatar, Conversation, Persona } from "../../models/index.js";
 import { CAPABILITIES } from "../../avatar/capabilities.js";
 import { getProvider } from "../../avatar/providers/registry.js";
 import { createJoinToken, endRoom } from "../../integrations/livekit/index.js";
@@ -56,9 +56,14 @@ export const roomService = {
       status: "pending",
     });
 
+    // Full-pipeline vendors run the conversation themselves, so the brief has
+    // to travel with the session request - our agent worker never sees the call
+    // and cannot apply it later.
+    const persona = avatar.personaId ? await Persona.findById(avatar.personaId).lean() : null;
+
     const connection =
       capabilities.pipelineMode === "full-pipeline"
-        ? await startVendorSession({ avatar, conversation })
+        ? await startVendorSession({ avatar, persona, conversation })
         : await startOwnRoom({ conversation, avatar, roomName, userId });
 
     // Render-only calls are marked active by the agent worker when it joins.
@@ -140,9 +145,9 @@ async function startOwnRoom({ conversation, avatar, roomName, userId }) {
   return { transport: "livekit", url: serverUrl, token, room: roomName, agentName };
 }
 
-async function startVendorSession({ avatar, conversation }) {
+async function startVendorSession({ avatar, persona, conversation }) {
   const provider = getProvider(avatar.providerId);
-  const session = await provider.createSession({ avatar });
+  const session = await provider.createSession({ avatar, persona });
 
   conversation.providerSessionId = session.providerSessionId;
   await conversation.save();

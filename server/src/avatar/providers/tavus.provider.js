@@ -150,7 +150,10 @@ export class TavusProvider extends BaseAvatarProvider {
         ...(persona?.systemPrompt ? { conversational_context: persona.systemPrompt } : {}),
         ...(persona?.greeting ? { custom_greeting: persona.greeting } : {}),
         ...(callbackUrl ? { callback_url: callbackUrl } : {}),
-        properties: { max_call_duration: env.maxCallSeconds },
+        properties: {
+          max_call_duration: persona?.maxCallSeconds || env.maxCallSeconds,
+          ...(persona?.language ? { languages: [persona.language] } : {}),
+        },
       },
     });
 

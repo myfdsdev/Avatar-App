@@ -1,9 +1,12 @@
 import { api } from "@/lib/apiClient";
 
-async function upload(endpoint, field, { file, name, providerId }) {
+async function upload(endpoint, field, { file, name, providerId, behaviour }) {
   const form = new FormData();
   form.append("name", name);
   if (providerId) form.append("providerId", providerId);
+  // Multipart has no nesting, so the brief travels as JSON and the server
+  // parses it back before validating.
+  if (behaviour) form.append("behaviour", JSON.stringify(behaviour));
   form.append(field, file);
 
   // Goes through the shared client so it gets the token and the 401 retry.
@@ -18,8 +21,10 @@ export const studioApi = {
   /** Ready-made avatars the vendor already hosts. No upload, no training. */
   stock: () => api.get("/studio/stock").then((r) => r.avatars),
 
-  adoptStock: ({ providerId, providerAvatarId, name }) =>
-    api.post("/studio/stock", { providerId, providerAvatarId, name }).then((r) => r.avatar),
+  adoptStock: ({ providerId, providerAvatarId, name, behaviour }) =>
+    api
+      .post("/studio/stock", { providerId, providerAvatarId, name, behaviour })
+      .then((r) => r.avatar),
 
   createFromPhoto: (input) => upload("photo", "image", input),
 
