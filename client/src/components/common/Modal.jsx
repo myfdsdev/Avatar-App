@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
  * A centred dialog over a dimmed page.
  *
  * Rendered in a portal so a parent's overflow or stacking context cannot clip
- * it - the studio's scrolling avatar grid would otherwise trap it.
+ * it - it is mounted inside the app shell's scrolling column.
  *
  * Closes on Escape and on a backdrop click, and restores focus to whatever
  * opened it, because a dialog that strands the keyboard is worse than no
@@ -14,6 +14,12 @@ import { createPortal } from "react-dom";
 export default function Modal({ open, onClose, title, description, children, footer }) {
   const panelRef = useRef(null);
   const restoreTo = useRef(null);
+
+  // Read through a ref so the effect below runs once per opening. Callers pass
+  // a fresh function every render; with it as a dependency, each keystroke in
+  // the form re-ran the effect and yanked focus out of the field being typed in.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -24,7 +30,7 @@ export default function Modal({ open, onClose, title, description, children, foo
     document.body.style.overflow = "hidden";
 
     const onKey = (e) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
 
@@ -35,7 +41,7 @@ export default function Modal({ open, onClose, title, description, children, foo
       document.body.style.overflow = previousOverflow;
       restoreTo.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

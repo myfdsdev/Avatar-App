@@ -45,7 +45,7 @@
   --red: #ef4444;
 
   /* ---- shape ----
-     Rounded throughout. 12px is the workhorse; cards and panels go larger. */
+     Rounded throughout. 14px is the workhorse; cards and panels go larger. */
   --radius-sm: 10px;
   --radius: 14px;
   --radius-lg: 20px;
@@ -90,6 +90,7 @@
 
   /* ---- layout ---- */
   --sidebar-w: 232px;
+  --sidebar-w-collapsed: 72px;
   /* Wide on purpose. Capped at 1120 the content left a third of a large screen
      empty beside the sidebar, which made the hero look small on the page it is
      supposed to dominate. */

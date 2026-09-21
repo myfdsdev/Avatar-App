@@ -6,7 +6,8 @@
  * language and is no longer used.
  */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+/* 800 is for the dashboard hero's display line only. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 
 /* Geist Mono is not on Google Fonts; served from a CDN that mirrors the npm package. */
 @import url("https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-mono/style.css");

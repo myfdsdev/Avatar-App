@@ -1,62 +1,16 @@
 import Field from "@/components/forms/Field";
+import { PRESETS, briefFromPreset } from "./presets";
 
 /**
  * Everything about how an avatar behaves, in one form.
  *
- * Shared by all three creation flows, because the brief matters more than how
- * the face was made - a stock face with no brief is the least useful thing the
- * product can produce.
+ * Kept apart from the create dialog because the brief matters more than how the
+ * face was made, and it is the part that will be edited on its own later.
  *
  * Fields that only some vendors honour say so. Silently offering a setting that
  * the selected vendor ignores is how the brief used to get dropped, and a
  * control that does nothing is worse than one that is absent.
  */
-const PRESETS = [
-  {
-    id: "support",
-    label: "Support agent",
-    systemPrompt:
-      "You are a calm, efficient support agent. Ask one clarifying question before " +
-      "offering a fix. Keep answers to two or three sentences. If you do not know " +
-      "something, say so and offer to escalate rather than guessing.",
-    greeting: "Hi, what can I help you with today?",
-    motionPrompt: "an attentive person listening carefully",
-    temperature: 0.4,
-  },
-  {
-    id: "tutor",
-    label: "Language tutor",
-    systemPrompt:
-      "You are a patient language tutor. Speak simply, correct mistakes gently, and " +
-      "ask a short follow-up question every turn so the learner keeps talking. Never " +
-      "lecture for more than three sentences.",
-    greeting: "Hey! What would you like to practise today?",
-    motionPrompt: "a warm, encouraging teacher",
-    temperature: 0.6,
-  },
-  {
-    id: "interviewer",
-    label: "Interviewer",
-    systemPrompt:
-      "You are conducting a friendly screening interview. Ask one question at a time, " +
-      "listen to the whole answer, and follow up on anything vague. Do not evaluate " +
-      "the candidate out loud.",
-    greeting: "Thanks for joining. Ready when you are — shall we start?",
-    motionPrompt: "a composed professional taking notes",
-    temperature: 0.3,
-  },
-  {
-    id: "demo",
-    label: "Product demo",
-    systemPrompt:
-      "You are walking someone through a product. Lead with what they can do, not " +
-      "with features. Ask what they are trying to achieve before explaining anything, " +
-      "and keep each explanation under three sentences.",
-    greeting: "Hi! What are you hoping to get out of this?",
-    motionPrompt: "an energetic presenter using their hands",
-    temperature: 0.7,
-  },
-];
 
 const TONES = [
   { value: 0.2, label: "Precise", hint: "Sticks closely to the brief" },
@@ -74,14 +28,7 @@ const DURATIONS = [
 export default function BehaviourFields({ value, onChange, options, disabled }) {
   const set = (patch) => onChange({ ...value, ...patch });
 
-  const applyPreset = (preset) =>
-    onChange({
-      ...value,
-      systemPrompt: preset.systemPrompt,
-      greeting: preset.greeting,
-      motionPrompt: preset.motionPrompt,
-      temperature: preset.temperature,
-    });
+  const applyPreset = (preset) => onChange({ ...value, ...briefFromPreset(preset) });
 
   return (
     <div className="space-y-5">
@@ -106,8 +53,8 @@ export default function BehaviourFields({ value, onChange, options, disabled }) 
         label="Name"
         value={value.name ?? ""}
         onChange={(v) => set({ name: v })}
-        placeholder={options?.namePlaceholder || "Jess"}
-        hint="Left empty, it keeps the provider's name."
+        placeholder="Jess"
+        hint="Shown in your library and on calls."
         disabled={disabled}
       />
 

@@ -12,6 +12,8 @@ import studioRoutes from "./modules/studio/studio.routes.js";
 import providerWebhooks from "./webhooks/provider.webhook.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import analyticsRoutes from "./modules/analytics/analytics.routes.js";
+import conversationRoutes from "./modules/conversations/conversation.routes.js";
+import linkRoutes from "./modules/links/link.routes.js";
 import { authenticate, requireAuth } from "./middleware/auth.js";
 import { getStorage } from "./integrations/storage/registry.js";
 
@@ -58,6 +60,11 @@ export function createApp() {
   app.use("/api/rooms", requireAuth, roomRoutes);
   app.use("/api/studio", requireAuth, studioRoutes);
   app.use("/api/analytics", requireAuth, analyticsRoutes);
+  app.use("/api/conversations", requireAuth, conversationRoutes);
+
+  // Share links are used by people without an account. The token in the URL is
+  // the credential; see modules/links for what it does and does not allow.
+  app.use("/api/links", linkRoutes);
 
   // Webhooks are called by vendors, not users - they authenticate by the
   // signed callback URL instead of a bearer token.

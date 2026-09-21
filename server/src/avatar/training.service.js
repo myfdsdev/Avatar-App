@@ -10,7 +10,7 @@ import { logger } from "../config/logger.js";
  * Two paths reach the same place, deliberately:
  *
  *   webhook  the vendor tells us the moment it finishes. Fast, but not
- *            trustworthy on its own - Tavus sends no signature, and a webhook
+ *            trustworthy on its own - vendors are not assumed to sign, and a webhook
  *            can simply be missed while we are deploying.
  *
  *   polling  we ask. Slower, but authoritative, and it is what makes a missed
@@ -22,7 +22,7 @@ import { logger } from "../config/logger.js";
  * achieves nothing beyond an extra API call.
  */
 export const trainingService = {
-  /** Unguessable callback URL. Tavus has no signing, so the URL is the secret. */
+  /** Unguessable callback URL. Vendors may not sign, so the URL is the secret. */
   callbackUrlFor(job) {
     if (!env.webhookSecret || !env.publicBaseUrl) return undefined;
     return `${env.publicBaseUrl}/api/webhooks/providers/${job.providerId}/${signJob(job)}`;

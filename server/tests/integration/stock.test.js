@@ -3,7 +3,7 @@
  *
  * This is the route that matters when training is a paid feature and listing
  * is not - the account can still get a real, callable avatar. Exercised through
- * `mock-hosted`, which mirrors Tavus (full-pipeline, stock-backed) so the path
+ * `mock-hosted`, which mirrors a hosted vendor (full-pipeline, stock-backed) so the path
  * stays honest without spending a vendor's quota.
  */
 import "../setup-env.js";

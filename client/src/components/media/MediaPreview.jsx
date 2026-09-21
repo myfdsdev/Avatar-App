@@ -6,7 +6,7 @@ const VIDEO_EXT = /\.(mp4|mov|webm|m4v)(\?|$)/i;
 /**
  * Renders an avatar's preview, which is not always an image.
  *
- * A video-cloned avatar's preview may be a still (Tavus returns a thumbnail)
+ * A video-cloned avatar's preview may be a still (some vendors return a thumbnail)
  * or the training clip itself (the mock provider hands back what it was given),
  * so the source type is not a reliable signal - the URL is. Anything that
  * fails to load falls back to a label rather than a broken-image icon.

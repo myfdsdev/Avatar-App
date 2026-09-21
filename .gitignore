@@ -1,9 +1,10 @@
 node_modules/
 dist/
 build/
+# Every env file except the documented template - backups included.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 *.log
 npm-debug.log*
 .DS_Store

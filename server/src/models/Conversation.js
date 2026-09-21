@@ -14,6 +14,15 @@ const conversationSchema = new mongoose.Schema(
     avatarId: { type: mongoose.Schema.Types.ObjectId, ref: "Avatar", required: true, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
+    // "link" calls come from someone outside the workspace through an avatar's
+    // share link. They have no user, only the name they typed - which is what
+    // the history shows, and what the avatar is told to call them.
+    source: { type: String, enum: ["app", "link"], default: "app" },
+    guest: {
+      name: { type: String, trim: true },
+      email: { type: String, trim: true, lowercase: true },
+    },
+
     roomName: { type: String, required: true, index: true },
     providerId: { type: String, required: true },
     pipelineMode: { type: String, enum: ["render-only", "full-pipeline"], required: true },

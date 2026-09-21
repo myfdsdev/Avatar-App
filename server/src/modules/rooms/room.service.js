@@ -19,7 +19,11 @@ import { logger } from "../../config/logger.js";
  * so it does not branch on vendor, only on transport.
  */
 export const roomService = {
-  async startCall({ workspace, avatarId, userId }) {
+  /**
+   * @param {{ workspace: object, avatarId: string, userId?: string,
+   *           source?: "app"|"link", guest?: { name: string, email?: string } }} input
+   */
+  async startCall({ workspace, avatarId, userId, source = "app", guest }) {
     // Checked before anything is created, so a refused call leaves no record
     // and reserves no vendor session.
     await usageService.assertCanStartCall(workspace);
@@ -49,6 +53,8 @@ export const roomService = {
       workspaceId: workspace._id,
       avatarId: avatar._id,
       userId,
+      source,
+      guest,
       roomName,
       providerId: avatar.providerId,
       pipelineMode: capabilities.pipelineMode,
@@ -64,7 +70,7 @@ export const roomService = {
     const connection =
       capabilities.pipelineMode === "full-pipeline"
         ? await startVendorSession({ avatar, persona, conversation })
-        : await startOwnRoom({ conversation, avatar, roomName, userId });
+        : await startOwnRoom({ conversation, avatar, roomName, userId, guest });
 
     // Render-only calls are marked active by the agent worker when it joins.
     // Full-pipeline vendors have no worker, and they start charging the moment
@@ -116,29 +122,55 @@ export const roomService = {
       }
     }
 
-    conversation.status = "ended";
-    conversation.endedAt = new Date();
-    if (conversation.startedAt) {
-      conversation.durationSec = Math.round((conversation.endedAt - conversation.startedAt) / 1000);
-    }
-    await conversation.save();
-
-    // Idempotent: the transport's own disconnect event can also land here.
-    const entry = await usageService.recordConversation(conversation);
+    const { conversation: ended, entry } = await this.finish(conversation._id, {
+      endReason: "hung up",
+    });
 
     return {
-      conversationId: conversation.id,
-      durationSec: conversation.durationSec,
+      conversationId: ended.id,
+      durationSec: ended.durationSec,
       minutes: entry.minutes,
       costCents: entry.costCents,
     };
   },
+
+  /**
+   * Marks a call ended and meters it. Safe to call more than once and from
+   * more than one process at a time.
+   *
+   * Two things finish calls: the caller hanging up (through the API) and the
+   * agent worker seeing the room close - which is the only signal at all when
+   * someone simply closes the tab. Without the second, such calls stayed
+   * "active" forever and counted against the concurrency limit until nobody in
+   * the workspace could start a call.
+   *
+   * The status flip is atomic, so exactly one caller computes the duration;
+   * the ledger's unique index covers the metering.
+   */
+  async finish(conversationId, { endReason } = {}) {
+    const endedAt = new Date();
+    const won = await Conversation.findOneAndUpdate(
+      { _id: conversationId, status: { $in: ["pending", "active"] } },
+      { $set: { status: "ended", endedAt, ...(endReason && { endReason }) } },
+      { new: true },
+    );
+
+    if (won?.startedAt) {
+      won.durationSec = Math.round((endedAt - won.startedAt) / 1000);
+      await won.save();
+    }
+
+    const conversation = won || (await Conversation.findById(conversationId));
+    const entry = await usageService.recordConversation(conversation);
+    return { conversation, entry };
+  },
 };
 
-async function startOwnRoom({ conversation, avatar, roomName, userId }) {
+async function startOwnRoom({ conversation, avatar, roomName, userId, guest }) {
   const { token, serverUrl, agentName } = await createJoinToken({
     roomName,
-    identity: `user-${userId || conversation.id}`,
+    identity: userId ? `user-${userId}` : `guest-${conversation.id}`,
+    name: guest?.name,
     metadata: { conversationId: conversation.id, avatarId: String(avatar._id) },
   });
 

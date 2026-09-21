@@ -53,7 +53,7 @@ mic -> STT -> LLM -> TTS -> [vendor renders video] -> browser
                               ^ our agent worker drives this
 ```
 
-**Full-pipeline** (Tavus CVI, HeyGen FULL mode)
+**Full-pipeline** (e.g. HeyGen FULL mode; Tavus previously)
 The vendor runs the entire conversation on their infrastructure. Our agent
 worker is not involved at all. The API creates a session and the browser
 connects directly to the vendor's transport.
@@ -125,7 +125,7 @@ this check the product happily manufactures dead avatars.
 **Storage it cannot reach.** `acceptsDirectUpload` in the capability matrix.
 Most vendors fetch assets from their own servers and therefore need public
 object storage; LemonSlice will take the bytes, so it works with
-`STORAGE_DRIVER=local` and Tavus will not.
+`STORAGE_DRIVER=local` where a vendor that fetches uploads itself would not.
 
 Both surface in the studio with the specific fix named, and `Avatar.callable`
 accounts for both.
@@ -168,7 +168,7 @@ Video-cloned faces take minutes to train, so `createFromVideo` returns a job
 and the avatar sits in `training` until it resolves. Two paths resolve it, and
 keeping both is deliberate:
 
-**Webhook** - fast, but not trustworthy on its own. Tavus sends no signature,
+**Webhook** - fast, but not trustworthy on its own. Vendors may send no signature,
 and a callback can simply be missed during a deploy.
 
 **Polling** - authoritative. Runs lazily whenever someone reads a training
@@ -215,8 +215,8 @@ joins, with nothing wrong in the application at all.
 | Process | Command | Responsibility |
 |---|---|---|
 | API | `npm --prefix server run dev` | HTTP, auth, avatar CRUD, token minting |
-| Agent worker | `npm --prefix server run agent` | Live calls (render-only vendors) |
-| Queue workers | `npm --prefix server run workers` | Training polls, media, transcripts, usage |
+| Agent worker | `npm --prefix server run agent` | Live calls (render-only vendors), and writing each call's transcript turn by turn |
+| Queue workers | `npm --prefix server run workers` | Training polls, media, usage |
 | Client | `npm --prefix client run dev` | React SPA |
 
 All share `server/src/models` and `server/src/config`, which is why the agent
@@ -272,4 +272,4 @@ adapter costs one indirection and buys the ability to move.
 
 **A single adapter method for both vendor shapes.** Attempted and discarded:
 full-pipeline vendors have no renderer and their own transport, so the
-abstraction would leak at the first Tavus call.
+abstraction would leak at the first full-pipeline call.

@@ -56,16 +56,11 @@ export const env = {
   // fake avatar that looks real.
   avatarProvider: optional("AVATAR_PROVIDER"),
   lemonsliceApiKey: optional("LEMONSLICE_API_KEY"),
-  tavusApiKey: optional("TAVUS_API_KEY"),
-  tavusModel: optional("TAVUS_MODEL", "phoenix-4.5"),
-  // A face trained from a still has no audio to learn a voice from, so Tavus
-  // requires one to be named explicitly.
-  tavusDefaultVoice: optional("TAVUS_DEFAULT_VOICE", "Rio"),
 
   maxCallSeconds: Number(optional("MAX_CALL_SECONDS", "3600")),
 
-  // Tavus does not sign its webhooks, so the callback URL carries an
-  // unguessable token and we verify that instead. See webhooks/provider.webhook.js.
+  // Vendors are not assumed to sign their webhooks, so the callback URL carries
+  // an unguessable token and we verify that instead. See webhooks/provider.webhook.js.
   webhookSecret: optional("WEBHOOK_SECRET"),
 
   livekit: {

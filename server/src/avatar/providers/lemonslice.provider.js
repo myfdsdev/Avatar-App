@@ -16,7 +16,7 @@ import { logger } from "../../config/logger.js";
  * it. The renderer resolves that at call time; all this needs to know is that
  * the reference points at a real image.
  *
- * Video clones are not offered; those route to Tavus.
+ * Video clones are not offered; LemonSlice animates stills only.
  */
 export class LemonSliceProvider extends BaseAvatarProvider {
   constructor({ apiKey } = {}) {

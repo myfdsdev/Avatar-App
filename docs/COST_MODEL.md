@@ -14,7 +14,7 @@ the avatar. All per-minute, USD, list pricing.
 | **Avatar video** | **LemonSlice** | **0.164** | dominant line item |
 | | | **~0.207** | **render-only total** |
 
-Full-pipeline (Tavus) is a single line at ~$0.37/min with no separable parts -
+A full-pipeline vendor is typically a single line (Tavus was ~$0.37/min) with no separable parts -
 the trade is less control for less integration work.
 
 ## What this means
@@ -43,7 +43,7 @@ because included minutes are rarely fully consumed.
 
 ## Non-call costs
 
-- **Video clone training** is charged per replica, not per minute (Tavus: ~$65
+- **Video clone training** is typically charged per replica, not per minute (Tavus was ~$65
   for extra replicas, falling with volume). Bill it as a one-off, not usage.
 - **Storage** is negligible per user but grows with retained training videos.
   Add a retention policy before it matters.

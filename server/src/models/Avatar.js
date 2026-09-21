@@ -32,10 +32,20 @@ const avatarSchema = new mongoose.Schema(
 
     failureReason: String,
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+
+    // A public link anyone can use to talk to this avatar without an account -
+    // an interview, a demo, a support desk. The token is the only credential,
+    // so it is long and random, and resetting it is how a leaked link is
+    // revoked. Off until someone turns it on.
+    share: {
+      token: String,
+      enabled: { type: Boolean, default: false },
+    },
   },
   { timestamps: true },
 );
 
 avatarSchema.index({ workspaceId: 1, status: 1 });
+avatarSchema.index({ "share.token": 1 }, { unique: true, sparse: true });
 
 export const Avatar = mongoose.model("Avatar", avatarSchema);

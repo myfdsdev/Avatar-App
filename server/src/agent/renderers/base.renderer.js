@@ -9,7 +9,7 @@ import { NotSupportedError } from "../../avatar/providers/base.provider.js";
  * the API process, while rendering one is a long-lived job inside the LiveKit
  * agent worker. Collapsing them would tie the API's lifetime to a call's.
  *
- * Only render-only vendors implement this. Full-pipeline vendors (Tavus) run
+ * Only render-only vendors implement this. Full-pipeline vendors run
  * the conversation on their own infrastructure, so no renderer is involved -
  * the client connects straight to their session.
  */

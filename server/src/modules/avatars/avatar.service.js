@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { avatarRepository } from "./avatar.repository.js";
 import { CAPABILITIES, isDevelopmentOnly } from "../../avatar/capabilities.js";
 import { isConfigured } from "../../avatar/providers/registry.js";
@@ -10,6 +11,17 @@ const notFound = () => {
   err.statusCode = 404;
   return err;
 };
+
+/**
+ * 128 random bits. The token is the whole credential for a public link, so it
+ * must not be guessable or enumerable - never derived from the avatar id.
+ */
+const newShareToken = () => crypto.randomBytes(16).toString("base64url");
+
+const shareState = (avatar) => ({
+  enabled: Boolean(avatar.share?.enabled && avatar.share?.token),
+  token: avatar.share?.token || null,
+});
 
 export const avatarService = {
   async list(workspaceId) {
@@ -31,6 +43,37 @@ export const avatarService = {
       avatar = await avatarRepository.findById(workspaceId, id);
     }
     return decorate(avatar);
+  },
+
+  /** The avatar's public link: whether it is on, and its token. */
+  async getShare(workspaceId, id) {
+    const avatar = await avatarRepository.findById(workspaceId, id);
+    if (!avatar) throw notFound();
+    return shareState(avatar);
+  },
+
+  /**
+   * Turns the link on or off. The token is minted on first enable and kept
+   * across off/on, so switching a link off for a day does not break every
+   * invitation already sent - resetting is the separate, deliberate action.
+   */
+  async setShare(workspaceId, id, { enabled }) {
+    const avatar = await avatarRepository.findById(workspaceId, id);
+    if (!avatar) throw notFound();
+
+    const patch = { "share.enabled": enabled };
+    if (enabled && !avatar.share?.token) patch["share.token"] = newShareToken();
+
+    return shareState(await avatarRepository.updateById(workspaceId, id, { $set: patch }));
+  },
+
+  /** Replaces the token, so every copy of the old link stops working at once. */
+  async resetShare(workspaceId, id) {
+    const updated = await avatarRepository.updateById(workspaceId, id, {
+      $set: { "share.token": newShareToken(), "share.enabled": true },
+    });
+    if (!updated) throw notFound();
+    return shareState(updated);
   },
 
   async remove(workspaceId, id) {
@@ -79,6 +122,17 @@ async function reconcileTraining(avatars) {
  * controls, whether a live image swap is possible - and deriving it here keeps
  * that knowledge out of the UI.
  */
+/**
+ * Ready is not the same as callable. A vendor with no credential produces
+ * avatars that look finished and fail the moment someone dials them.
+ */
+export function isCallable(avatar) {
+  const capabilities = CAPABILITIES[avatar.providerId];
+  return (
+    avatar.status === "ready" && Boolean(capabilities?.nodePlugin) && isConfigured(avatar.providerId)
+  );
+}
+
 function decorate(avatar) {
   const capabilities = CAPABILITIES[avatar.providerId] || null;
   const configured = isConfigured(avatar.providerId);
@@ -86,9 +140,8 @@ function decorate(avatar) {
   return {
     ...avatar,
     capabilities,
-    // Ready is not the same as callable. A vendor with no credential produces
-    // avatars that look finished and fail the moment someone dials them.
-    callable: avatar.status === "ready" && Boolean(capabilities?.nodePlugin) && configured,
+    callable: isCallable(avatar),
+    share: shareState(avatar),
     // Surfaced so the UI can say so. A stub returns the uploaded file as its
     // own preview, which is indistinguishable from a real result unless the
     // product admits which one it is.

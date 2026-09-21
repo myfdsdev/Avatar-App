@@ -5,7 +5,7 @@ import { env } from "../../config/env.js";
 /**
  * Runtime counterpart to avatar/providers/registry.js.
  *
- * Only render-only vendors appear here. Full-pipeline vendors (Tavus) never
+ * Only render-only vendors appear here. Full-pipeline vendors never
  * reach the agent worker at all - the client connects straight to them - so
  * they have no renderer by design, not by omission.
  */

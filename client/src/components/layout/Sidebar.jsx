@@ -1,15 +1,18 @@
+import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { NavLink, useNavigate } from "react-router-dom";
 import { authApi } from "@/services/auth.api";
 import { useAuth } from "@/store/auth.store";
+import { useCreateAvatar } from "@/store/createAvatar.store";
+import { useUi } from "@/store/ui.store";
 
 /**
- * Left navigation, grouped by concern.
+ * Left navigation, grouped by what you are doing.
  *
- * The grouping is Tavus's: the things you operate sit above the assets they are
- * built from, with account and reference material pushed to the bottom. The
- * look is LemonSlice's: rounded pills, a translucent active state, no rules
- * between items.
+ * Laid out like a creative-tool dashboard: small uppercase section labels, a
+ * collapse toggle beside the logo, and the account pinned to the bottom as a
+ * card that opens its own menu. The look stays LemonSlice's - dark, rounded,
+ * a translucent active state.
  *
  * Sections are data so adding a page is one line, and so the section a page
  * belongs to is stated rather than implied by where it happens to sit.
@@ -19,30 +22,181 @@ import { useAuth } from "@/store/auth.store";
  */
 const SECTIONS = [
   {
+    title: "Explore",
     items: [{ to: "/", label: "Home", icon: HomeIcon, end: true }],
   },
   {
-    title: "Avatar platform",
-    items: [
-      { to: "/avatars", label: "Avatars", icon: AvatarIcon },
-      { to: "/conversations", label: "Conversations", icon: ChatIcon, soon: true },
-      { to: "/analytics", label: "Usage", icon: ChartIcon },
-    ],
+    title: "Create",
+    // Opens the create dialog over the current page rather than navigating.
+    items: [{ label: "Create avatar", icon: PlusIcon, opensCreate: true }],
   },
   {
     title: "Assets",
     items: [
-      { to: "/studio", label: "Create", icon: PlusIcon },
+      { to: "/avatars", label: "Avatars", icon: AvatarIcon },
       { to: "/personas", label: "Personas", icon: PersonaIcon, soon: true },
       { to: "/voices", label: "Voices", icon: VoiceIcon, soon: true },
     ],
   },
+  {
+    title: "My work",
+    items: [
+      { to: "/conversations", label: "Conversations", icon: ChatIcon },
+      { to: "/analytics", label: "Usage", icon: ChartIcon },
+    ],
+  },
 ];
 
+const itemClass = (collapsed) =>
+  clsx(
+    "mb-0.5 flex w-full items-center gap-3 rounded py-2 text-ui transition-colors",
+    collapsed ? "justify-center px-0" : "px-3",
+  );
+
 export default function Sidebar() {
+  const showCreate = useCreateAvatar((s) => s.show);
+  const collapsed = useUi((s) => s.sidebarCollapsed);
+  const toggle = useUi((s) => s.toggleSidebar);
+
+  return (
+    <aside
+      className={clsx(
+        "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-border bg-bg transition-[width] duration-200 ease-ease",
+        collapsed ? "w-[var(--sidebar-w-collapsed)]" : "w-sidebar",
+      )}
+    >
+      <div
+        className={clsx(
+          "flex h-16 shrink-0 items-center border-b border-border",
+          collapsed ? "justify-center" : "justify-between pl-5 pr-3",
+        )}
+      >
+        {!collapsed && (
+          <span className="flex items-center gap-2">
+            <span className="h-6 w-6 rounded bg-pink" aria-hidden />
+            <span className="font-semibold">Avatar App</span>
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="flex h-8 w-8 items-center justify-center rounded-sm border border-border text-text-muted transition-colors hover:border-border-strong hover:text-text"
+        >
+          <PanelIcon />
+        </button>
+      </div>
+
+      <nav className={clsx("flex-1 overflow-y-auto pb-4 pt-3", collapsed ? "px-2" : "px-3")}>
+        {SECTIONS.map((section, i) => (
+          <div key={section.title} className={clsx(i > 0 && (collapsed ? "mt-3" : "mt-4"))}>
+            {collapsed ? (
+              i > 0 && <div className="mx-2 mb-3 border-t border-border" aria-hidden />
+            ) : (
+              <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-faint">
+                {section.title}
+              </p>
+            )}
+
+            {section.items.map(({ to, label, icon: Icon, end, soon, opensCreate }) => {
+              const hint = collapsed ? (soon ? `${label} (soon)` : label) : undefined;
+
+              if (soon) {
+                return (
+                  <span
+                    key={label}
+                    title={hint}
+                    className={clsx(itemClass(collapsed), "cursor-default text-text-faint")}
+                  >
+                    <Icon />
+                    {!collapsed && (
+                      <>
+                        {label}
+                        <span className="ml-auto rounded-full bg-surface-3 px-2 py-0.5 text-label">
+                          Soon
+                        </span>
+                      </>
+                    )}
+                  </span>
+                );
+              }
+
+              if (opensCreate) {
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={showCreate}
+                    title={hint}
+                    aria-label={collapsed ? label : undefined}
+                    className={clsx(
+                      itemClass(collapsed),
+                      "text-left text-text-muted hover:bg-surface-hover hover:text-text",
+                    )}
+                  >
+                    <Icon />
+                    {!collapsed && label}
+                  </button>
+                );
+              }
+
+              return (
+                <NavLink
+                  key={label}
+                  to={to}
+                  end={end}
+                  title={hint}
+                  aria-label={collapsed ? label : undefined}
+                  className={({ isActive }) =>
+                    clsx(
+                      itemClass(collapsed),
+                      isActive
+                        ? "bg-surface-active text-text"
+                        : "text-text-muted hover:bg-surface-hover hover:text-text",
+                    )
+                  }
+                >
+                  <Icon />
+                  {!collapsed && label}
+                </NavLink>
+              );
+            })}
+          </div>
+        ))}
+      </nav>
+
+      <div className={clsx("border-t border-border", collapsed ? "p-2" : "p-3")}>
+        <AccountCard collapsed={collapsed} />
+      </div>
+    </aside>
+  );
+}
+
+/**
+ * The signed-in account, with sign-out behind it rather than beside it - a
+ * destructive action that sits one stray click away gets clicked.
+ */
+function AccountCard({ collapsed }) {
   const navigate = useNavigate();
   const user = useAuth((s) => s.user);
   const clear = useAuth((s) => s.clear);
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => {
+      if (!ref.current?.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   const signOut = async () => {
     // Revoking server-side is best effort; the local session ends either way,
@@ -52,79 +206,66 @@ export default function Sidebar() {
     navigate("/login", { replace: true });
   };
 
+  const initial = (user?.name || user?.email || "?").charAt(0).toUpperCase();
+
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-sidebar flex-col border-r border-border bg-bg">
-      <div className="flex h-16 items-center gap-2 px-5">
-        <span className="h-6 w-6 rounded bg-pink" aria-hidden />
-        <span className="font-medium">Avatar App</span>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto px-3 pb-4">
-        {SECTIONS.map((section, i) => (
-          <div key={section.title || i} className={clsx(i > 0 && "mt-6")}>
-            {section.title && (
-              <p className="px-3 pb-2 text-label uppercase tracking-wide text-text-faint">
-                {section.title}
-              </p>
-            )}
-            {section.items.map(({ to, label, icon: Icon, end, soon }) =>
-              soon ? (
-                <span
-                  key={to}
-                  className="mb-0.5 flex cursor-default items-center gap-3 rounded px-3 py-2 text-ui text-text-faint"
-                >
-                  <Icon />
-                  {label}
-                  <span className="ml-auto rounded-full bg-surface-3 px-2 py-0.5 text-label">
-                    Soon
-                  </span>
-                </span>
-              ) : (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={end}
-                  className={({ isActive }) =>
-                    clsx(
-                      "mb-0.5 flex items-center gap-3 rounded px-3 py-2 text-ui transition-colors",
-                      isActive
-                        ? "bg-surface-active text-text"
-                        : "text-text-muted hover:bg-surface-hover hover:text-text",
-                    )
-                  }
-                >
-                  <Icon />
-                  {label}
-                </NavLink>
-              ),
-            )}
-          </div>
-        ))}
-      </nav>
-
-      <div className="border-t border-border p-3">
-        <div className="flex items-center gap-3 rounded px-3 py-2">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-3 text-label">
-            {(user?.name || user?.email || "?").charAt(0).toUpperCase()}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-ui">{user?.name || "Signed in"}</span>
-            <span className="block truncate text-label text-text-faint">{user?.email}</span>
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={signOut}
-          className="mt-1 w-full rounded px-3 py-2 text-left text-ui text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+    <div ref={ref} className="relative">
+      {open && (
+        <div
+          role="menu"
+          className={clsx(
+            "absolute bottom-full mb-2 overflow-hidden rounded border border-border-strong bg-surface-2 p-1 shadow-lg",
+            collapsed ? "left-0 w-52" : "inset-x-0",
+          )}
         >
-          Sign out
-        </button>
-      </div>
-    </aside>
+          {collapsed && (
+            <p className="truncate px-3 pb-1 pt-2 text-label text-text-faint">{user?.email}</p>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={signOut}
+            className="w-full rounded-sm px-3 py-2 text-left text-ui text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+          >
+            Sign out
+          </button>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Account"
+        className={clsx(
+          "flex w-full items-center gap-3 rounded border border-border transition-colors hover:border-border-strong",
+          collapsed ? "justify-center p-1.5" : "px-3 py-2.5",
+        )}
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pink text-ui font-semibold text-text-inverse">
+          {initial}
+        </span>
+        {!collapsed && (
+          <>
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block truncate text-ui font-medium">{user?.name || "Signed in"}</span>
+              <span className="block truncate text-label text-text-faint">{user?.email}</span>
+            </span>
+            <svg
+              {...stroke}
+              className={clsx("shrink-0 text-text-muted transition-transform", !open && "rotate-180")}
+            >
+              <path d="m4 10 4-4 4 4" />
+            </svg>
+          </>
+        )}
+      </button>
+    </div>
   );
 }
 
-/* Inline so the sidebar carries no icon dependency for six glyphs. */
+/* Inline so the sidebar carries no icon dependency for a handful of glyphs. */
 const stroke = {
   width: 16,
   height: 16,
@@ -137,6 +278,15 @@ const stroke = {
   "aria-hidden": true,
   className: "shrink-0",
 };
+
+function PanelIcon() {
+  return (
+    <svg {...stroke}>
+      <rect x="2" y="2.5" width="12" height="11" rx="2" />
+      <path d="M6 2.5v11" />
+    </svg>
+  );
+}
 
 function HomeIcon() {
   return (

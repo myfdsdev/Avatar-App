@@ -82,7 +82,7 @@ describe("the brief reaching the vendor", () => {
   test("a full-pipeline vendor is given the prompt and greeting", async () => {
     const { body: created } = await adopt({ name: "Hosted tutor", ...BRIEF });
 
-    // mock-hosted records what it was asked for, standing in for Tavus.
+    // mock-hosted records what it was asked for, standing in for a hosted vendor.
     const { getProvider } = await import("../../src/avatar/providers/registry.js");
     const provider = getProvider("mock-hosted");
 

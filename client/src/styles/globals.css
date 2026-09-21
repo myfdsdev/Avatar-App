@@ -72,4 +72,17 @@
     font-size: var(--text-label);
     letter-spacing: 0.01em;
   }
+
+  /* A horizontally scrolling card row. Snaps to cards, and the scrollbar stays
+     thin rather than hidden so mouse users still have something to drag. */
+  .scroll-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-3) transparent;
+  }
+  .scroll-row > * {
+    scroll-snap-align: start;
+  }
 }

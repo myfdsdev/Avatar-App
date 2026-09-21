@@ -3,16 +3,17 @@
 Interactive AI avatar platform. Upload a photo or record a video, get a talking
 avatar, and hold a real-time voice conversation with it in the browser.
 
-**Status: Phase 5 complete.** Accounts, workspaces, avatar creation from a
-photo or a trained video clone, real calls over LiveKit with LemonSlice or the
-mock renderer, vendor-hosted calls over Tavus, and per-workspace usage metering
-with concurrency limits. Billing is deliberately not implemented.
+**Status:** accounts, workspaces, avatar creation with a configurable brief,
+real calls over LiveKit with LemonSlice or the mock renderer, and per-workspace
+usage metering with concurrency limits. Billing is deliberately not
+implemented. **LemonSlice is the only real vendor** - see
+[docs/PROVIDERS.md](docs/PROVIDERS.md).
 
 ## Stack
 
 React 19 + Vite - Express - MongoDB - Redis/BullMQ - LiveKit - Node.
 
-Avatar video comes from third-party vendors (LemonSlice for photo avatars, Tavus
+Avatar video comes from third-party vendors (LemonSlice for photo avatars)
 for video clones) behind an adapter, so no vendor is load-bearing. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -88,7 +89,7 @@ Inside `server/src`:
 |---|---|
 | `avatar/` | Vendor abstraction - capability matrix, adapters, registry |
 | `agent/` | LiveKit worker that drives live calls (one long-lived process) |
-| `workers/` | BullMQ queue consumers (training polls, transcripts, usage) |
+| `workers/` | BullMQ queue consumers (training polls, usage) |
 | `modules/` | Feature modules: controller, service, repository, routes, validation, permissions |
 | `models/` | Mongoose schemas |
 
@@ -124,7 +125,7 @@ accordingly - but note the adapters land in Phase 2 and 3.
 | 0 - done | Architecture, structure, data model, provider contract, design system |
 | 1 - done | Core loop: token minting, agent worker, mock renderer, live call UI |
 | 2 - done | Photo avatars: LemonSlice adapter, studio upload, storage adapter |
-| 3 - done | Video clones: Tavus adapter, async training, signed webhooks, Daily transport |
+| 3 - done | Video clones: async training, signed webhooks, Daily transport *(Tavus adapter since removed)* |
 | 4 - done | Auth, tenancy, usage metering, concurrency limits |
 | 5 - done | LemonSlice renderer, direct image upload, session control events |
 | later | Billing, if and when it is wanted |
@@ -157,8 +158,8 @@ join token carries the room grant and agent dispatch, and ending the call.
 
 | Source | What happens | Vendors |
 |---|---|---|
-| Photo | Instant. LemonSlice animates the image at call time with no training. | mock, LemonSlice, Tavus |
-| Video | Trains a face on the vendor. Takes minutes; the avatar is not callable until it finishes. | mock, Tavus |
+| Photo | Instant. LemonSlice animates the image at call time with no training. | LemonSlice |
+| Video | Trains a face on the vendor. Takes minutes; the avatar is not callable until it finishes. | *none implemented* |
 
 A training avatar resolves by webhook, or by a lazy poll the next time anyone
 reads it - so a missed callback costs seconds, not a stuck avatar.
@@ -201,8 +202,8 @@ Uploads go through a driver chosen with `STORAGE_DRIVER`:
 
 Most vendors fetch images from their own servers, so `local` cannot serve them.
 **LemonSlice is the exception** - it accepts the image bytes directly, so it
-works with `local` as-is. Tavus does not, and needs `STORAGE_DRIVER=r2` or a
-tunnel with `PUBLIC_BASE_URL` pointed at it.
+works with `local` as-is. A vendor that fetches uploads itself would need
+`STORAGE_DRIVER=r2` or a tunnel with `PUBLIC_BASE_URL` pointed at it.
 
 The studio names whichever blocker applies rather than failing at the vendor.
 

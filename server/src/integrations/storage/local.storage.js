@@ -9,7 +9,7 @@ const UPLOAD_DIR = path.resolve("uploads");
  * Writes to disk and serves through Express.
  *
  * Deliberately reports reachableByVendors = false: these URLs are localhost,
- * which LemonSlice and Tavus cannot fetch. Fine for the mock provider and for
+ * which a vendor's own servers cannot fetch. Fine for the mock provider and for
  * developing the upload flow; anything that hands a URL to a real vendor needs
  * R2 or a tunnel.
  */

@@ -32,14 +32,24 @@ export const usageService = {
     const rate = CAPABILITIES[conversation.providerId]?.approxCostPerMinUsd ?? 0;
     const costCents = Math.round(minutes * rate * 100);
 
-    const entry = await UsageLedger.create({
-      workspaceId: conversation.workspaceId,
-      conversationId: conversation._id,
-      providerId: conversation.providerId,
-      minutes: Number(minutes.toFixed(3)),
-      costCents,
-      kind: "conversation",
-    });
+    let entry;
+    try {
+      entry = await UsageLedger.create({
+        workspaceId: conversation.workspaceId,
+        conversationId: conversation._id,
+        providerId: conversation.providerId,
+        minutes: Number(minutes.toFixed(3)),
+        costCents,
+        kind: "conversation",
+      });
+    } catch (err) {
+      // Lost a race with another process finishing the same call; its entry
+      // stands. The unique index is what makes this safe.
+      if (err.code === 11000) {
+        return UsageLedger.findOne({ conversationId: conversation._id, kind: "conversation" }).lean();
+      }
+      throw err;
+    }
 
     await Conversation.updateOne({ _id: conversation._id }, { $set: { costCents } });
 

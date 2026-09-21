@@ -1,7 +1,7 @@
 /**
  * The full-pipeline branch: vendor-hosted sessions on a non-LiveKit transport.
  *
- * Exercised through `mock-hosted` rather than Tavus, so the path that costs
+ * Exercised through `mock-hosted` rather than a real hosted vendor, so the path that costs
  * money in production costs nothing to keep honest here.
  */
 import "../setup-env.js";

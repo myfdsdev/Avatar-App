@@ -63,7 +63,8 @@ export const CAPABILITIES = {
 
   // The full-pipeline counterpart to `mock`. Without it that whole branch -
   // vendor-hosted sessions, a non-LiveKit transport, the billing clock starting
-  // at session creation - could only be exercised against Tavus, which costs
+  // at session creation - could only be exercised against a hosted vendor,
+  // which costs
   // real money on every run.
   "mock-hosted": {
     developmentOnly: true,
@@ -74,7 +75,8 @@ export const CAPABILITIES = {
     realtimeImageUpdate: false,
     nonHumanCharacters: true,
     acceptsDirectUpload: true,
-    // Mirrors Tavus - full-pipeline and stock-backed - so both of those paths
+    // Mirrors a hosted vendor - full-pipeline and stock-backed - so both of
+    // those paths
     // are testable without spending a vendor's quota.
     stockAvatars: true,
     transport: "daily",
@@ -101,27 +103,6 @@ export const CAPABILITIES = {
     nodePlugin: true,
   },
 
-  tavus: {
-    // Tavus trains a face from either a video or a still (train_image_url),
-    // so it covers both sources - but a still also requires a voice, and the
-    // result is a trained object rather than LemonSlice's instant animation.
-    photoAvatar: true,
-    videoClone: true,
-    byoLLM: true,
-    emotions: false,
-    realtimeImageUpdate: false,
-    nonHumanCharacters: false,
-    // train_video_url / train_image_url only - Tavus fetches it itself.
-    acceptsDirectUpload: false,
-    // Ships a large library of pre-trained faces. Usable on plans that do not
-    // allow training your own, which makes it the only way some accounts can
-    // get a real avatar at all.
-    stockAvatars: true,
-    transport: "daily",
-    pipelineMode: "full-pipeline",
-    approxCostPerMinUsd: 0.37,
-    nodePlugin: true,
-  },
 
   // Documented but not selectable: LiveKit ships these as Python-only plugins,
   // so they cannot be driven from this codebase without a separate runtime.

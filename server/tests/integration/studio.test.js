@@ -63,12 +63,6 @@ describe("studio options", () => {
     assert.equal(byId.lemonslice.acceptsDirectUpload, true);
     assert.equal(byId.lemonslice.configured, false);
     assert.equal(byId.lemonslice.usable, false);
-
-    // Tavus is configured but fetches assets itself, so it needs public storage.
-    assert.equal(byId.tavus.configured, true);
-    assert.equal(byId.tavus.acceptsDirectUpload, false);
-    assert.equal(byId.tavus.usable, false);
-    assert.equal(byId.tavus.videoClone, true);
   });
 
   test("requires authentication", async () => {
@@ -123,12 +117,22 @@ describe("photo upload", () => {
   });
 
   test("refuses a vendor that fetches assets itself while storage is local", async () => {
-    const { status, body } = await uploadPhoto({ providerId: "tavus" });
+    // No fetch-based vendor is implemented at the moment, so borrow the mock and
+    // flip the one flag the guard reads. The guard has to be right for whichever
+    // vendor arrives next, not only while one happens to exist.
+    const { CAPABILITIES } = await import("../../src/avatar/capabilities.js");
+    const original = CAPABILITIES.mock.acceptsDirectUpload;
+    CAPABILITIES.mock.acceptsDirectUpload = false;
 
-    assert.equal(status, 422);
-    assert.match(body.error.message, /fetches uploads from its own servers/);
-    // The guidance has to name the way out, not just the problem.
-    assert.match(body.error.message, /STORAGE_DRIVER=r2|PUBLIC_BASE_URL/);
+    try {
+      const { status, body } = await uploadPhoto({ providerId: "mock" });
+      assert.equal(status, 422);
+      assert.match(body.error.message, /fetches uploads from its own servers/);
+      // The guidance has to name the way out, not just the problem.
+      assert.match(body.error.message, /STORAGE_DRIVER=r2|PUBLIC_BASE_URL/);
+    } finally {
+      CAPABILITIES.mock.acceptsDirectUpload = original;
+    }
   });
 
   test("does not apply that limit to a vendor that accepts the bytes", async () => {
@@ -148,9 +152,23 @@ describe("photo upload", () => {
 
   test("leaves no orphaned asset when the vendor rejects the image", async () => {
     const { AvatarAsset } = await import("../../src/models/index.js");
+    const { getProvider } = await import("../../src/avatar/providers/registry.js");
+    const mock = getProvider("mock");
     const before = await AvatarAsset.countDocuments();
 
-    await uploadPhoto({ providerId: "tavus" });
+    // Fail at the vendor call, after the upload has already landed - which is
+    // exactly the moment the rollback exists for.
+    const original = mock.createFromPhoto.bind(mock);
+    mock.createFromPhoto = async () => {
+      throw Object.assign(new Error("vendor rejected the image"), { statusCode: 422 });
+    };
+
+    try {
+      const { status } = await uploadPhoto({ name: "Rejected" });
+      assert.equal(status, 422);
+    } finally {
+      mock.createFromPhoto = original;
+    }
 
     assert.equal(await AvatarAsset.countDocuments(), before, "asset should be rolled back");
   });

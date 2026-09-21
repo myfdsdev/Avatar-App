@@ -1,7 +1,6 @@
 import { CAPABILITIES, capabilityForSource, isDevelopmentOnly } from "../capabilities.js";
 import { MockAvatarProvider } from "./mock.provider.js";
 import { LemonSliceProvider } from "./lemonslice.provider.js";
-import { TavusProvider } from "./tavus.provider.js";
 import { env } from "../../config/env.js";
 import { NotSupportedError, UnavailableInRuntimeError } from "./base.provider.js";
 
@@ -21,7 +20,6 @@ const FACTORIES = {
   mock: () => new MockAvatarProvider(),
   "mock-hosted": () => new MockAvatarProvider({ id: "mock-hosted" }),
   lemonslice: () => new LemonSliceProvider({ apiKey: env.lemonsliceApiKey }),
-  tavus: () => new TavusProvider({ apiKey: env.tavusApiKey }),
 };
 
 /**
@@ -50,7 +48,6 @@ const CREDENTIALS = {
   mock: () => true,
   "mock-hosted": () => true,
   lemonslice: () => Boolean(env.lemonsliceApiKey),
-  tavus: () => Boolean(env.tavusApiKey),
 };
 
 /**

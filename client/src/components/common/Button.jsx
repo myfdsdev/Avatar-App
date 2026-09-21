@@ -9,7 +9,10 @@ import clsx from "clsx";
  * language.
  *
  * @param {object}  props
- * @param {'primary'|'secondary'|'ghost'|'danger'} [props.variant]
+ * `inverse` is a light button for sitting on imagery, where pink would fight
+ * the picture.
+ *
+ * @param {'primary'|'secondary'|'ghost'|'danger'|'inverse'} [props.variant]
  * @param {'sm'|'md'|'lg'} [props.size]
  * @param {React.ElementType} [props.as]  render as "a" or Link when needed
  */
@@ -51,4 +54,5 @@ const VARIANTS = {
   secondary: "bg-surface-active text-text border border-border-strong hover:bg-surface-3",
   ghost: "text-text-muted hover:bg-surface-hover hover:text-text",
   danger: "bg-red text-text hover:opacity-90",
+  inverse: "bg-text text-text-inverse font-semibold hover:bg-white",
 };

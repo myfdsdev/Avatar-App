@@ -1,33 +1,32 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { LiveKitRoom, useVoiceAssistant } from "@livekit/components-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { avatarApi } from "@/services/avatar.api";
 import { roomApi } from "@/services/room.api";
-import AvatarStage from "@/components/media/AvatarStage";
-import CallControls from "@/components/media/CallControls";
 import MediaPreview from "@/components/media/MediaPreview";
 import Card from "@/components/common/Card";
 import Button from "@/components/common/Button";
-import DailyCall from "./DailyCall";
+import CallSurface from "./CallSurface";
 
 /**
  * Pre-join, then live call.
  *
- * The connection envelope from the API carries `transport`. Render-only vendors
- * return "livekit" and are handled here; full-pipeline vendors return their own
- * transport. Branching on transport rather than on vendor keeps this component
- * out of the vendor matrix.
+ * The live part is `CallSurface`, shared with the public share-link page; it
+ * branches on the API's `transport`, never on vendor. However the call ends -
+ * hang-up, time limit, the room closing - the caller lands on its transcript.
  *
  * Rendered without the app shell - a call wants the whole window.
  */
 export default function CallRoom() {
   const { avatarId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [connection, setConnection] = useState(null);
   const [starting, setStarting] = useState(false);
   const [ending, setEnding] = useState(false);
   const [error, setError] = useState(null);
+  // Hang-up and the room closing both end up here, often back to back.
+  const finished = useRef(false);
 
   const { data: avatar, isLoading } = useQuery({
     queryKey: ["avatar", avatarId],
@@ -38,6 +37,7 @@ export default function CallRoom() {
     setStarting(true);
     setError(null);
     try {
+      finished.current = false;
       setConnection(await roomApi.start(avatarId));
     } catch (err) {
       setError(err.message);
@@ -47,18 +47,24 @@ export default function CallRoom() {
   }, [avatarId]);
 
   const hangUp = useCallback(async () => {
+    if (finished.current) return;
+    finished.current = true;
     setEnding(true);
+    const conversationId = connection?.conversationId;
     try {
-      if (connection) await roomApi.end(connection.conversationId);
+      if (conversationId) await roomApi.end(conversationId);
     } catch {
       // The call is over either way; a failed cleanup call must not trap the
       // user on this screen. A queue worker reconciles usage from room events.
     } finally {
       setConnection(null);
       setEnding(false);
-      navigate("/avatars");
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      // Straight to what was just said. The transcript page keeps polling
+      // briefly, since the last reply can land a moment after hang-up.
+      navigate(conversationId ? `/conversations/${conversationId}` : "/avatars");
     }
-  }, [connection, navigate]);
+  }, [connection, navigate, queryClient]);
 
   if (isLoading) return <Centered>Loading avatar…</Centered>;
   if (!avatar) return <Centered>Avatar not found</Centered>;
@@ -71,23 +77,14 @@ export default function CallRoom() {
       error={error}
       onBack={() => navigate("/avatars")}
     />
-  ) : connection.transport === "daily" ? (
-    // Full-pipeline vendors host the call themselves; we only embed their room.
-    <DailyCall avatar={avatar} joinUrl={connection.url} onHangUp={hangUp} ending={ending} />
-  ) : connection.transport === "livekit" ? (
-    <LiveKitRoom
-      token={connection.token}
-      serverUrl={connection.url}
-      connect
-      audio
-      video={false}
-      onDisconnected={() => setConnection(null)}
-      onError={(err) => setError(err.message)}
-    >
-      <ActiveCall avatar={avatar} onHangUp={hangUp} ending={ending} />
-    </LiveKitRoom>
   ) : (
-    <Centered>Unsupported transport &quot;{connection.transport}&quot;</Centered>
+    <CallSurface
+      connection={connection}
+      avatar={avatar}
+      onEnd={hangUp}
+      ending={ending}
+      onError={setError}
+    />
   );
 
   return (
@@ -99,22 +96,6 @@ export default function CallRoom() {
       </header>
       <main className="mx-auto max-w-2xl px-gutter pb-16">{body}</main>
     </div>
-  );
-}
-
-function ActiveCall({ avatar, onHangUp, ending }) {
-  const { state } = useVoiceAssistant();
-
-  return (
-    <>
-      <AvatarStage
-        avatarName={avatar.name}
-        previewUrl={avatar.previewUrl}
-        isSpeaking={state === "speaking"}
-      />
-      <CallControls onHangUp={onHangUp} ending={ending} />
-      <p className="mt-4 text-ui text-text-faint">Agent state: {state || "connecting"}</p>
-    </>
   );
 }
 

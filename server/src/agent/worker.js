@@ -4,10 +4,12 @@ import mongoose from "mongoose";
 import { connectDb } from "../config/db.js";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
-import { livekitConfig } from "../integrations/livekit/index.js";
+import { endRoom, livekitConfig } from "../integrations/livekit/index.js";
 import { Avatar, Conversation } from "../models/index.js";
+import { roomService } from "../modules/rooms/room.service.js";
 import { getRenderer } from "./renderers/registry.js";
 import { buildPipelineConfig, logPipelineMode } from "./pipeline.js";
+import { createTranscriptRecorder } from "./transcript.recorder.js";
 
 /**
  * The realtime worker. One long-lived process, separate from the API, that
@@ -31,6 +33,63 @@ export default defineAgent({
     const pipeline = buildPipelineConfig(avatar);
     logPipelineMode(pipeline);
 
+    let session = null;
+    let transcript = null;
+    let endReason = "room closed";
+
+    // The persona's limit, or the install's. The brief promises "calls end
+    // automatically after this", and on a public link it is also the only cap
+    // on what one caller can spend.
+    const limitSec = avatar.persona?.maxCallSeconds || env.maxCallSeconds;
+    const limitTimer = setTimeout(() => endForTimeLimit(), limitSec * 1000);
+
+    /**
+     * Finishes the conversation however the call ends - a hang-up, the caller
+     * closing the tab, the time limit, the job being stopped. The API finishes
+     * it too on a hang-up; `finish` is idempotent, so the second one is a no-op.
+     */
+    let finished = false;
+    const finish = async () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(limitTimer);
+      await transcript?.flush();
+      await renderer.stop().catch((err) => logger.warn({ err: err.message }, "renderer stop failed"));
+      await roomService
+        .finish(conversation._id, { endReason })
+        .catch((err) => logger.error({ err, conversationId: String(conversation._id) }, "finish failed"));
+    };
+
+    /**
+     * Closes the room, which disconnects everyone in it - including the avatar
+     * vendor, which bills for as long as it is in the room.
+     */
+    const closeRoom = () =>
+      endRoom(ctx.room.name).catch((err) =>
+        logger.warn({ err: err.message, room: ctx.room.name }, "room already closed"),
+      );
+
+    async function endForTimeLimit() {
+      endReason = "time limit";
+      logger.info({ room: ctx.room.name, limitSec }, "call reached its time limit");
+      if (session) {
+        // A goodbye beats being cut off mid-sentence, but not at any cost - a
+        // stuck TTS must not keep the call (and its bill) open.
+        const goodbye = session
+          .generateReply({
+            instructions:
+              "The call has reached its time limit. Tell the caller, thank them, and say goodbye in one short sentence.",
+          })
+          .waitForPlayout();
+        await Promise.race([goodbye, new Promise((r) => setTimeout(r, 15_000))]).catch(() => {});
+      }
+      await finish();
+      await closeRoom();
+    }
+
+    ctx.addShutdownCallback(finish);
+    ctx.room.once("disconnected", () => finish());
+
     // Video first: the avatar should be on screen while the rest warms up,
     // rather than the caller staring at an empty tile.
     await renderer.start({ room: ctx.room, avatar });
@@ -38,13 +97,12 @@ export default defineAgent({
     if (!pipeline.available) {
       logger.warn({ room: ctx.room.name }, "video-only mode; no conversation");
       await markActive(conversation);
-      // Hold the job open so the track keeps publishing until the caller leaves.
+      // Hold the job open so the track keeps publishing until the room closes.
       await new Promise((resolve) => ctx.room.once("disconnected", resolve));
-      await renderer.stop();
       return;
     }
 
-    const session = new voice.AgentSession({
+    session = new voice.AgentSession({
       stt: pipeline.stt,
       llm: pipeline.llm,
       tts: pipeline.tts,
@@ -55,8 +113,28 @@ export default defineAgent({
       renderer.setSpeaking?.(ev?.newState === "speaking");
     });
 
+    // Every committed line - the caller's final transcript and each reply the
+    // avatar actually spoke - goes to the conversation's transcript as it
+    // happens. Registered before start so the greeting is captured too.
+    transcript = createTranscriptRecorder({
+      conversationId: conversation._id,
+      workspaceId: conversation.workspaceId,
+    });
+    session.on("conversation_item_added", (ev) => transcript.record(ev.item));
+
+    // The session closes itself when the caller leaves - including by closing
+    // the tab, which never reaches the API. Nobody is left to talk to, so the
+    // room goes too rather than idling with the avatar vendor still billing.
+    session.on("close", async (ev) => {
+      if (endReason === "room closed") {
+        endReason = ev?.reason === "participant_disconnected" ? "caller left" : ev?.reason || "closed";
+      }
+      await finish();
+      await closeRoom();
+    });
+
     await session.start({
-      agent: new voice.Agent({ instructions: instructionsFor(avatar) }),
+      agent: new voice.Agent({ instructions: instructionsFor(avatar, conversation) }),
       room: ctx.room,
     });
 
@@ -64,10 +142,6 @@ export default defineAgent({
 
     session.generateReply({
       instructions: avatar.persona?.greeting || "Greet the caller warmly in one sentence.",
-    });
-
-    ctx.room.once("disconnected", async () => {
-      await renderer.stop();
     });
   },
 });
@@ -96,12 +170,18 @@ async function resolveJob(ctx) {
   };
 }
 
-function instructionsFor(avatar) {
-  return (
+function instructionsFor(avatar, conversation) {
+  const brief =
     avatar.persona?.systemPrompt ||
     `You are ${avatar.name}, a friendly AI avatar speaking with someone over video. ` +
-      `Keep replies to two or three sentences.`
-  );
+      `Keep replies to two or three sentences.`;
+
+  // Someone arriving by share link typed their name before joining. An
+  // interviewer that knows who it is talking to sounds like one.
+  const guest = conversation.guest?.name;
+  return guest
+    ? `${brief}\n\nThe person on this call is called ${guest}. Use their name naturally.`
+    : brief;
 }
 
 async function markActive(conversation) {

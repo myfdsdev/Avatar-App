@@ -18,8 +18,6 @@ process.env.LIVEKIT_API_KEY = "";
 process.env.LIVEKIT_API_SECRET = "";
 process.env.ANTHROPIC_API_KEY = "";
 
-// Vendor credentials are pinned rather than cleared, so the suite always has
-// one configured vendor and one unconfigured one to assert against - whatever
-// the developer happens to have in .env.
-process.env.TAVUS_API_KEY = "test-tavus-key";
+// Pinned rather than inherited, so a developer's own .env cannot change what
+// the suite exercises.
 process.env.LEMONSLICE_API_KEY = "";

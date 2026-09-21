@@ -51,36 +51,9 @@ if (env.anthropicApiKey) {
   record("LLM", false, "needs LiveKit Cloud or ANTHROPIC_API_KEY");
 }
 
-// ---- Tavus ----
-// Read-only: listing faces costs nothing. Training and conversations consume
-// quota, so this never creates anything.
-if (env.tavusApiKey) {
-  try {
-    const res = await fetch("https://tavusapi.com/v2/faces", {
-      headers: { "x-api-key": env.tavusApiKey },
-      signal: AbortSignal.timeout(15000),
-    });
-    if (res.ok) {
-      const body = await res.json();
-      const faces = body.data || [];
-      // Tavus reports "completed", not "ready" - go through the adapter's own
-      // mapping rather than guessing the vocabulary a second time here.
-      const { toJobStatus } = await import("../avatar/providers/tavus.provider.js");
-      const usable = faces.filter((f) => toJobStatus(f.status) === "succeeded").length;
-      record("Tavus", true, `${faces.length} face(s), ${usable} usable`);
-    } else {
-      record("Tavus", false, `HTTP ${res.status} - key rejected`);
-    }
-  } catch (err) {
-    record("Tavus", false, firstLine(err.message));
-  }
-} else {
-  record("Tavus", false, "no TAVUS_API_KEY");
-}
-
 // ---- Storage ----
-// Vendors fetch training assets themselves, so unreachable storage blocks every
-// real vendor regardless of their own credentials.
+// Local storage is fine for vendors that take the bytes (LemonSlice). A vendor
+// that fetches assets itself needs public storage, so that is what r2 is for.
 //
 // For r2 this actually uploads a probe and fetches it back anonymously, because
 // "configured" and "public" are different things: R2's S3 endpoint accepts
@@ -91,7 +64,7 @@ if (env.tavusApiKey) {
   const storage = getStorage();
 
   if (storage.id === "local") {
-    record("Storage", false, "local - localhost URLs, vendors cannot fetch uploads");
+    record("Storage", true, "local - fine for LemonSlice; URL-fetching vendors would need r2");
   } else {
     // Ask the driver to prove it, rather than trusting its own claim.
     const ok = await storage.verifyPublicAccess();
@@ -125,14 +98,17 @@ record(
   const stub = isDevelopmentOnly(env.avatarProvider);
   const real = candidatesForSource("photo");
 
-  record(
-    "Avatar provider",
-    !stub,
-    stub
-      ? `AVATAR_PROVIDER=${env.avatarProvider} is a local stub and overrides every real ` +
-        `vendor. Unset it to use: ${real.join(", ") || "(none configured)"}`
-      : `${env.avatarProvider || "automatic"} - real vendors available: ${real.join(", ") || "none"}`,
-  );
+  let detail;
+  if (stub) {
+    detail =
+      `AVATAR_PROVIDER=${env.avatarProvider} is a local stub and overrides every real ` +
+      `vendor. Unset it to use: ${real.join(", ") || "(none configured)"}`;
+  } else if (!real.length) {
+    detail = "no real vendor configured - set LEMONSLICE_API_KEY to create avatars";
+  } else {
+    detail = `${env.avatarProvider || "automatic"} - real vendors available: ${real.join(", ")}`;
+  }
+  record("Avatar provider", !stub && real.length > 0, detail);
 }
 
 // ---- Report ----

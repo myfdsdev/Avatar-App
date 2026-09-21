@@ -73,7 +73,7 @@ export class BaseAvatarProvider {
    * Ready-made avatars the vendor already hosts, usable with no upload and no
    * training. Guarded by `capabilities.stockAvatars`.
    *
-   * Worth having as a first-class concept rather than a Tavus detail: training
+   * Worth having as a first-class concept rather than a vendor detail: training
    * is often the paid tier while using a stock avatar is not, so this can be
    * the only route an account actually has to a working avatar.
    *

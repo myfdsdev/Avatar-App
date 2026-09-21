@@ -6,7 +6,7 @@ import { logger } from "../config/logger.js";
 /**
  * Inbound vendor callbacks for face training.
  *
- * Tavus sends these with no signature of any kind, so nothing in the body can
+ * Vendors are not assumed to sign these, so nothing in the body can
  * be trusted. Two things keep that safe:
  *
  *   - the callback URL carries an HMAC of the job id, so an attacker cannot

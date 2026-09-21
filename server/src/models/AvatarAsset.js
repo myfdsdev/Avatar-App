@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 /**
  * The uploaded photo or training video behind an avatar.
  *
- * `publicUrl` is not a convenience field - LemonSlice and Tavus fetch the file
+ * `publicUrl` is not a convenience field - vendors may fetch the file
  * from their own servers, so the asset must be publicly reachable before an
  * avatar can be created from it.
  */

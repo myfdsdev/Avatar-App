@@ -27,12 +27,7 @@ describe("health", () => {
     const body = await res.json();
 
     assert.equal(res.status, 200);
-    assert.deepEqual(body.implementedProviders.sort(), [
-      "lemonslice",
-      "mock",
-      "mock-hosted",
-      "tavus",
-    ]);
+    assert.deepEqual(body.implementedProviders.sort(), ["lemonslice", "mock", "mock-hosted"]);
     assert.equal(body.livekit.mode, "self-hosted-dev");
     assert.equal(body.storage.driver, "local");
   });
