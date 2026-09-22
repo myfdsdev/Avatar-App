@@ -24,6 +24,11 @@ router.use(resolveWorkspace);
 
 router.get("/options", studioController.options);
 router.get("/stock", studioController.stock);
+router.put(
+  "/stock/gender",
+  validate(studioValidation.setStockGender),
+  studioController.setStockGender,
+);
 
 // No upload, so this is plain JSON rather than multipart.
 router.post(

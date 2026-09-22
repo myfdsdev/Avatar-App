@@ -26,6 +26,20 @@ const avatarSchema = new mongoose.Schema(
 
     assetId: { type: mongoose.Schema.Types.ObjectId, ref: "AvatarAsset" },
     previewUrl: String,
+    // A short clip of the face talking, when the vendor has one.
+    previewVideoUrl: String,
+
+    // The character's gender: sorts the creator's library and picks a default voice.
+    gender: { type: String, enum: ["female", "male"] },
+
+    /**
+     * How the vendor draws the face. Only LemonSlice reads these today; unset
+     * means the vendor's own default (2:3, flagship model).
+     */
+    render: {
+      aspectRatio: { type: String, enum: ["2x3", "9x16", "1x1"] },
+      model: { type: String, enum: ["standard", "flash", "lite"] },
+    },
 
     personaId: { type: mongoose.Schema.Types.ObjectId, ref: "Persona" },
     voiceId: { type: mongoose.Schema.Types.ObjectId, ref: "Voice" },

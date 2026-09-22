@@ -7,7 +7,11 @@ export const studioController = {
   }),
 
   stock: asyncHandler(async (req, res) => {
-    res.json({ avatars: await studioService.listStock() });
+    res.json({ avatars: await studioService.listStock(req.workspace) });
+  }),
+
+  setStockGender: asyncHandler(async (req, res) => {
+    res.json(await studioService.setStockGender({ workspace: req.workspace, ...req.body }));
   }),
 
   createFromStock: asyncHandler(async (req, res) => {
@@ -16,6 +20,7 @@ export const studioController = {
       providerId: req.body.providerId,
       providerAvatarId: req.body.providerAvatarId,
       name: req.body.name,
+      gender: req.body.gender,
       behaviour: req.body.behaviour,
       userId: req.auth?.userId,
     });
@@ -28,8 +33,7 @@ export const studioController = {
       file: req.file,
       name: req.body.name,
       providerId: req.body.providerId,
-      behaviour: req.body.behaviour,
-      behaviour: req.body.behaviour,
+      gender: req.body.gender,
       behaviour: req.body.behaviour,
       userId: req.auth?.userId,
     });
@@ -43,8 +47,7 @@ export const studioController = {
       file: req.file,
       name: req.body.name,
       providerId: req.body.providerId,
-      behaviour: req.body.behaviour,
-      behaviour: req.body.behaviour,
+      gender: req.body.gender,
       behaviour: req.body.behaviour,
       userId: req.auth?.userId,
     });

@@ -96,7 +96,8 @@ export const CAPABILITIES = {
     nonHumanCharacters: true,
     // Takes the image as bytes, so it works without public object storage.
     acceptsDirectUpload: true,
-    stockAvatars: false,
+    // The agents saved on the LemonSlice account behind the key.
+    stockAvatars: true,
     transport: "livekit",
     pipelineMode: "render-only",
     approxCostPerMinUsd: 0.164,

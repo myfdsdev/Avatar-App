@@ -77,6 +77,8 @@ function client(baseUrl, token) {
     token,
     get: (path) => json("GET", path),
     post: (path, body) => json("POST", path, body),
+    put: (path, body) => json("PUT", path, body),
+    patch: (path, body) => json("PATCH", path, body),
     del: (path) => json("DELETE", path),
     /** Multipart upload; FormData sets its own content-type boundary. */
     async upload(path, form) {

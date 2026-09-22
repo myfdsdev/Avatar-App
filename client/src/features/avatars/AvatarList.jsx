@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { avatarApi } from "@/services/avatar.api";
-import { useCreateAvatar } from "@/store/createAvatar.store";
 import MediaPreview from "@/components/media/MediaPreview";
 import PageHeader from "@/components/layout/PageHeader";
 import Card from "@/components/common/Card";
@@ -10,7 +9,6 @@ import Button from "@/components/common/Button";
 import ShareDialog from "./ShareDialog";
 
 export default function AvatarList() {
-  const showCreate = useCreateAvatar((s) => s.show);
   const [sharing, setSharing] = useState(null);
   const { data: avatars, isLoading, error } = useQuery({
     queryKey: ["avatars"],
@@ -22,7 +20,11 @@ export default function AvatarList() {
       <PageHeader
         title="Avatars"
         description="Everything in this workspace that can take a call."
-        action={<Button onClick={showCreate}>Create avatar</Button>}
+        action={
+          <Button as={Link} to="/studio">
+            Create avatar
+          </Button>
+        }
       />
 
       {isLoading && <p className="text-text-muted">Loading</p>}
@@ -37,7 +39,9 @@ export default function AvatarList() {
         <Card className="py-12 text-center">
           <p className="text-text-muted">No avatars yet.</p>
           <div className="mt-4 flex justify-center">
-            <Button onClick={showCreate}>Create your first</Button>
+            <Button as={Link} to="/studio">
+              Create your first
+            </Button>
           </div>
         </Card>
       )}
@@ -56,17 +60,21 @@ export default function AvatarList() {
 function AvatarCard({ avatar, onShare }) {
   return (
     <Card flush hover className="flex flex-col">
-      <div className="relative">
+      <Link to={`/avatars/${avatar._id}`} className="relative block" aria-label={`${avatar.name} settings`}>
         <MediaPreview src={avatar.previewUrl} className="aspect-[4/3] w-full" />
         <div className="absolute right-3 top-3 flex gap-2">
           {avatar.share?.enabled && <Pill tone="pink">Link on</Pill>}
           {avatar.isStub && <Pill tone="yellow">Stub</Pill>}
           <Pill tone={avatar.callable ? "green" : "muted"}>{avatar.status}</Pill>
         </div>
-      </div>
+      </Link>
 
       <div className="flex flex-1 flex-col p-4">
-        <h3 className="truncate">{avatar.name}</h3>
+        <h3 className="truncate">
+          <Link to={`/avatars/${avatar._id}`} className="hover:underline">
+            {avatar.name}
+          </Link>
+        </h3>
         <p className="mt-1 text-ui text-text-muted">
           {avatar.sourceType} · {avatar.providerId}
         </p>

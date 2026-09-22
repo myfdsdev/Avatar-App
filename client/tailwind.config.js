@@ -30,6 +30,8 @@ export default {
         purple: "var(--purple)",
         blue: "var(--blue)",
         yellow: "var(--yellow)",
+        orange: "var(--orange)",
+        teal: "var(--teal)",
         red: "var(--red)",
       },
       fontFamily: {

@@ -10,6 +10,7 @@ router.use(resolveWorkspace);
 
 router.get("/", avatarController.list);
 router.get("/:id", validate(avatarValidation.byId), avatarController.get);
+router.patch("/:id", validate(avatarValidation.update), avatarController.update);
 router.delete("/:id", validate(avatarValidation.byId), avatarController.remove);
 
 // The public link. Managing it needs an account; using it does not - see

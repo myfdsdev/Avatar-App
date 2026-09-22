@@ -2,7 +2,7 @@
  * Starting briefs.
  *
  * Shown twice: as the "Templates" row on the dashboard, where picking one opens
- * the create dialog already filled in, and as chips inside the brief form.
+ * the avatar creator already filled in, and as chips inside the brief form.
  * One list, so the two can never disagree.
  */
 export const PRESETS = [

@@ -104,7 +104,7 @@ describe("adopting one", () => {
 
   test("refuses a provider that has no ready-made avatars", async () => {
     const { status, body } = await demo.post("/api/studio/stock", {
-      providerId: "lemonslice",
+      providerId: "mock",
       providerAvatarId: "anything",
     });
 

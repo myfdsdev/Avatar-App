@@ -10,6 +10,10 @@ export const avatarController = {
     res.json({ avatar: await avatarService.get(req.workspace._id, req.params.id) });
   }),
 
+  update: asyncHandler(async (req, res) => {
+    res.json({ avatar: await avatarService.update(req.workspace._id, req.params.id, req.body) });
+  }),
+
   remove: asyncHandler(async (req, res) => {
     res.json(await avatarService.remove(req.workspace._id, req.params.id));
   }),

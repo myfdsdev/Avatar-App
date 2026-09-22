@@ -10,7 +10,7 @@ import "../setup-env.js";
 import test, { after, before, describe } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
-import { resolveImage } from "../../src/agent/renderers/lemonslice.renderer.js";
+import { agentIdOf, renderPayload, resolveImage } from "../../src/agent/renderers/lemonslice.renderer.js";
 
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
@@ -69,5 +69,33 @@ describe("resolveImage", () => {
 
   test("rejects a malformed URL", async () => {
     await assert.rejects(() => resolveImage({ providerAvatarId: "not a url" }), /not a valid URL/);
+  });
+});
+
+describe("agentIdOf", () => {
+  test("recognises an avatar adopted from a LemonSlice agent", () => {
+    assert.equal(agentIdOf({ providerAvatarId: "agent_35d62d94af79391e" }), "agent_35d62d94af79391e");
+  });
+
+  test("leaves image avatars to resolveImage", () => {
+    assert.equal(agentIdOf({ providerAvatarId: "https://cdn.example.com/agent_1.png" }), null);
+    assert.equal(agentIdOf({ previewUrl: "https://cdn.example.com/face.png" }), null);
+  });
+});
+
+describe("renderPayload", () => {
+  test("sends the settings page's aspect ratio and model", () => {
+    assert.deepEqual(renderPayload({ render: { aspectRatio: "9x16", model: "flash" } }), {
+      aspect_ratio: "9x16",
+      model: "flash",
+    });
+  });
+
+  test("standard is LemonSlice's default, selected by sending no model", () => {
+    assert.deepEqual(renderPayload({ render: { aspectRatio: "2x3", model: "standard" } }), {
+      aspect_ratio: "2x3",
+    });
+    assert.equal(renderPayload({ render: { model: "standard" } }), null);
+    assert.equal(renderPayload({}), null);
   });
 });

@@ -10,6 +10,7 @@ import { roomService } from "../modules/rooms/room.service.js";
 import { getRenderer } from "./renderers/registry.js";
 import { buildPipelineConfig, logPipelineMode } from "./pipeline.js";
 import { createTranscriptRecorder } from "./transcript.recorder.js";
+import { RECOMMENDED_PROMPT } from "../ai/prompts/personality.js";
 
 /**
  * The realtime worker. One long-lived process, separate from the API, that
@@ -171,10 +172,13 @@ async function resolveJob(ctx) {
 }
 
 function instructionsFor(avatar, conversation) {
-  const brief =
+  const own =
     avatar.persona?.systemPrompt ||
     `You are ${avatar.name}, a friendly AI avatar speaking with someone over video. ` +
       `Keep replies to two or three sentences.`;
+  // "Default personality" on the settings page: spoken-conversation guidance
+  // added after the persona's own brief, never instead of it.
+  const brief = avatar.persona?.useDefaultPrompt ? `${own}\n\n${RECOMMENDED_PROMPT}` : own;
 
   // Someone arriving by share link typed their name before joining. An
   // interviewer that knows who it is talking to sounds like one.

@@ -3,7 +3,6 @@ import clsx from "clsx";
 import { NavLink, useNavigate } from "react-router-dom";
 import { authApi } from "@/services/auth.api";
 import { useAuth } from "@/store/auth.store";
-import { useCreateAvatar } from "@/store/createAvatar.store";
 import { useUi } from "@/store/ui.store";
 
 /**
@@ -16,9 +15,7 @@ import { useUi } from "@/store/ui.store";
  *
  * Sections are data so adding a page is one line, and so the section a page
  * belongs to is stated rather than implied by where it happens to sit.
- *
- * Planned pages are listed and marked, not hidden: the shape of the product is
- * worth showing, but a link that goes nowhere is worse than one that says so.
+ * Only pages that exist are listed.
  */
 const SECTIONS = [
   {
@@ -27,15 +24,12 @@ const SECTIONS = [
   },
   {
     title: "Create",
-    // Opens the create dialog over the current page rather than navigating.
-    items: [{ label: "Create avatar", icon: PlusIcon, opensCreate: true }],
+    items: [{ to: "/studio", label: "Create avatar", icon: PlusIcon }],
   },
   {
     title: "Assets",
     items: [
       { to: "/avatars", label: "Avatars", icon: AvatarIcon },
-      { to: "/personas", label: "Personas", icon: PersonaIcon, soon: true },
-      { to: "/voices", label: "Voices", icon: VoiceIcon, soon: true },
     ],
   },
   {
@@ -54,7 +48,6 @@ const itemClass = (collapsed) =>
   );
 
 export default function Sidebar() {
-  const showCreate = useCreateAvatar((s) => s.show);
   const collapsed = useUi((s) => s.sidebarCollapsed);
   const toggle = useUi((s) => s.toggleSidebar);
 
@@ -99,47 +92,8 @@ export default function Sidebar() {
               </p>
             )}
 
-            {section.items.map(({ to, label, icon: Icon, end, soon, opensCreate }) => {
-              const hint = collapsed ? (soon ? `${label} (soon)` : label) : undefined;
-
-              if (soon) {
-                return (
-                  <span
-                    key={label}
-                    title={hint}
-                    className={clsx(itemClass(collapsed), "cursor-default text-text-faint")}
-                  >
-                    <Icon />
-                    {!collapsed && (
-                      <>
-                        {label}
-                        <span className="ml-auto rounded-full bg-surface-3 px-2 py-0.5 text-label">
-                          Soon
-                        </span>
-                      </>
-                    )}
-                  </span>
-                );
-              }
-
-              if (opensCreate) {
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={showCreate}
-                    title={hint}
-                    aria-label={collapsed ? label : undefined}
-                    className={clsx(
-                      itemClass(collapsed),
-                      "text-left text-text-muted hover:bg-surface-hover hover:text-text",
-                    )}
-                  >
-                    <Icon />
-                    {!collapsed && label}
-                  </button>
-                );
-              }
+            {section.items.map(({ to, label, icon: Icon, end }) => {
+              const hint = collapsed ? label : undefined;
 
               return (
                 <NavLink
@@ -327,24 +281,6 @@ function PlusIcon() {
   return (
     <svg {...stroke}>
       <path d="M8 3v10M3 8h10" />
-    </svg>
-  );
-}
-
-function PersonaIcon() {
-  return (
-    <svg {...stroke}>
-      <rect x="2.5" y="3" width="11" height="10" rx="2" />
-      <path d="M5.5 6.5h5M5.5 9.5h3" />
-    </svg>
-  );
-}
-
-function VoiceIcon() {
-  return (
-    <svg {...stroke}>
-      <rect x="6" y="2" width="4" height="7" rx="2" />
-      <path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2" />
     </svg>
   );
 }

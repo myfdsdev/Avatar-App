@@ -1,70 +1,30 @@
-import { useCallback, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { avatarApi } from "@/services/avatar.api";
-import { roomApi } from "@/services/room.api";
 import MediaPreview from "@/components/media/MediaPreview";
 import Card from "@/components/common/Card";
 import Button from "@/components/common/Button";
 import CallSurface from "./CallSurface";
+import { useCall } from "./useCall";
 
 /**
  * Pre-join, then live call.
  *
  * The live part is `CallSurface`, shared with the public share-link page; it
- * branches on the API's `transport`, never on vendor. However the call ends -
- * hang-up, time limit, the room closing - the caller lands on its transcript.
+ * branches on the API's `transport`, never on vendor. Starting and ending live
+ * in `useCall`, shared with the avatar page's Chat tab.
  *
  * Rendered without the app shell - a call wants the whole window.
  */
 export default function CallRoom() {
   const { avatarId } = useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [connection, setConnection] = useState(null);
-  const [starting, setStarting] = useState(false);
-  const [ending, setEnding] = useState(false);
-  const [error, setError] = useState(null);
-  // Hang-up and the room closing both end up here, often back to back.
-  const finished = useRef(false);
+  const { connection, starting, ending, error, setError, start, hangUp } = useCall(avatarId);
 
   const { data: avatar, isLoading } = useQuery({
     queryKey: ["avatar", avatarId],
     queryFn: () => avatarApi.get(avatarId),
   });
-
-  const start = useCallback(async () => {
-    setStarting(true);
-    setError(null);
-    try {
-      finished.current = false;
-      setConnection(await roomApi.start(avatarId));
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setStarting(false);
-    }
-  }, [avatarId]);
-
-  const hangUp = useCallback(async () => {
-    if (finished.current) return;
-    finished.current = true;
-    setEnding(true);
-    const conversationId = connection?.conversationId;
-    try {
-      if (conversationId) await roomApi.end(conversationId);
-    } catch {
-      // The call is over either way; a failed cleanup call must not trap the
-      // user on this screen. A queue worker reconciles usage from room events.
-    } finally {
-      setConnection(null);
-      setEnding(false);
-      queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      // Straight to what was just said. The transcript page keeps polling
-      // briefly, since the last reply can land a moment after hang-up.
-      navigate(conversationId ? `/conversations/${conversationId}` : "/avatars");
-    }
-  }, [connection, navigate, queryClient]);
 
   if (isLoading) return <Centered>Loading avatar…</Centered>;
   if (!avatar) return <Centered>Avatar not found</Centered>;

@@ -89,21 +89,30 @@ keeping the page heading off the sidebar. At 40px it was getting clipped.
 The sidebar has small uppercase section labels (Explore, Create, Assets, My
 work), a collapse toggle beside the logo that shrinks it to icons
 (`--sidebar-w-collapsed`, remembered per browser), and the account as a card at
-the bottom whose menu holds Sign out. Planned pages appear marked *Soon* rather
-than hidden or linked to nothing. `AppShell wide` drops the container for
+the bottom whose menu holds Sign out. Only pages that exist are listed.
+`AppShell wide` drops the container for
 edge-to-edge pages. The call room renders outside the shell; a call wants the
 window.
 
 **Dashboard (`Home`)** - a wide hero carousel (a create slide, then one per
 callable avatar), then horizontally scrolling shelves (`.scroll-row`) of 5:7
-cards: Templates, which open the create dialog pre-filled, and Your avatars.
+cards: Templates, which open the avatar creator pre-filled, and Your avatars.
 Shelf cards follow LemonSlice's avatar grid - the picture fills the card, the
 name sits top-left over a shade, no caption underneath, and hovering darkens
 the card and shows one round action (green "Start call", pink "Use
 template").
 
-**`CreateAvatarDialog`** - the only way to create an avatar: photo plus brief,
-opened from any Create action through `store/createAvatar.store.js`.
+**`AvatarCreator`** - the only way to create an avatar: a full-window page at
+`/studio`, outside the shell. The face fills the middle at full height with a
+tool bar under it; the right panel only picks the character - a Female/Male
+toggle that filters the library below it - with "Create avatar" pinned to its
+foot. Every Create action links to it, and creating lands on the avatar page.
+
+**`AvatarDetail`** - one avatar at `/avatars/:id`, modelled on LemonSlice's
+agent page: a rounded panel, the name with a rename pencil, Chat / Settings as
+a segmented control and a menu (share, delete). Settings are sections - a
+label with a coloured round icon (`orange`, `teal`, `purple` tokens) over a
+card of rows - and save as they change; the header shows "Saving…/Saved".
 
 **`PageHeader`** - title, description, optional action. Every page starts the
 same way.

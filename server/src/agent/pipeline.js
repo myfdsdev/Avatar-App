@@ -3,6 +3,7 @@ import * as anthropic from "@livekit/agents-plugin-anthropic";
 import { livekitConfig } from "../integrations/livekit/index.js";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
+import { isHostedModel, speedOption } from "../ai/catalog.js";
 
 /**
  * Builds the speech and language half of a call.
@@ -58,10 +59,19 @@ export function buildPipelineConfig(avatar) {
  *
  * They were stored from the start and then ignored here, so a brief that asked
  * for a different model or a steadier tone quietly got neither.
+ *
+ * A "provider/model" id is hosted and runs on LiveKit Inference; a bare id is
+ * Claude and needs its own key. Temperature is only passed to Claude: some
+ * hosted models (OpenAI's reasoning ones) refuse anything but their default.
  */
 function buildLlm(persona) {
-  if (env.anthropicApiKey) {
-    const model = persona?.llmModel || env.defaultLlmModel;
+  const model = persona?.llmModel || (env.anthropicApiKey ? env.defaultLlmModel : null);
+
+  if (model && isHostedModel(model)) {
+    return { instance: new inference.LLM({ model }), label: model };
+  }
+
+  if (model && env.anthropicApiKey) {
     return {
       instance: new anthropic.LLM({
         model,
@@ -75,9 +85,10 @@ function buildLlm(persona) {
   return {
     instance: new inference.LLM({ model: env.fallbackLlmModel }),
     label: env.fallbackLlmModel,
-    note:
-      `No ANTHROPIC_API_KEY, so using the hosted model "${env.fallbackLlmModel}". ` +
-      `LiveKit Inference does not carry Claude.`,
+    note: model
+      ? `"${model}" needs ANTHROPIC_API_KEY, so using the hosted model "${env.fallbackLlmModel}".`
+      : `No ANTHROPIC_API_KEY, so using the hosted model "${env.fallbackLlmModel}". ` +
+        `LiveKit Inference does not carry Claude.`,
   };
 }
 
@@ -87,15 +98,21 @@ function buildLlm(persona) {
  * so a per-avatar voice needs no change here once Phase 2 populates it.
  */
 function buildTts(avatar) {
-  const voice = avatar?.voice?.providerVoiceId || env.ttsVoice;
-  const language = avatar?.persona?.language || avatar?.voice?.language || env.sttLanguage;
+  const persona = avatar?.persona;
+  const assigned = persona?.voice || avatar?.voice?.providerVoiceId;
+  const voice = assigned || env.ttsVoice;
+  const language = persona?.language || avatar?.voice?.language || env.sttLanguage;
+  const modelOptions = speedOption(env.ttsModel, persona?.voiceSpeed);
 
   return {
-    instance: new inference.TTS({ model: env.ttsModel, voice, language }),
-    label: `${env.ttsModel} / ${voice}`,
-    note: avatar?.voice?.providerVoiceId
-      ? null
-      : `Avatar has no voice assigned; using the default "${voice}".`,
+    instance: new inference.TTS({
+      model: env.ttsModel,
+      voice,
+      language,
+      ...(modelOptions && { modelOptions }),
+    }),
+    label: `${env.ttsModel} / ${voice}${modelOptions ? ` @ ${persona.voiceSpeed}x` : ""}`,
+    note: assigned ? null : `Avatar has no voice assigned; using the default "${voice}".`,
   };
 }
 

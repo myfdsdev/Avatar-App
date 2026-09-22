@@ -37,18 +37,29 @@ export class LemonSliceRenderer extends BaseAvatarRenderer {
   }
 
   async start({ session, room, avatar }) {
-    const image = await resolveImage(avatar);
+    const agentId = agentIdOf(avatar);
+    const image = agentId ? { agentId } : await resolveImage(avatar);
+
+    // A LemonSlice agent carries its own motion prompts, so the generic
+    // defaults are only filled in for plain images; the persona's own still wins.
+    const motion = avatar.persona?.motionPrompt || (agentId ? undefined : "a person talking");
+    const idle = avatar.persona?.idlePrompt || (agentId ? undefined : "a calm person waiting");
 
     this.avatarSession = new lemonslice.AvatarSession({
       apiKey: this.apiKey,
       ...image,
-      agentPrompt: avatar.persona?.motionPrompt || "a person talking",
-      agentIdlePrompt: avatar.persona?.idlePrompt || "a calm person waiting",
+      ...(motion && { agentPrompt: motion }),
+      ...(idle && { agentIdlePrompt: idle }),
+      ...(renderPayload(avatar) && { extraPayload: renderPayload(avatar) }),
     });
 
     const sessionId = await this.avatarSession.start(session, room);
     logger.info(
-      { sessionId, avatar: avatar.name, source: image.agentImage ? "bytes" : "url" },
+      {
+        sessionId,
+        avatar: avatar.name,
+        source: agentId ? "agent" : image.agentImage ? "bytes" : "url",
+      },
       "lemonslice renderer started",
     );
     return sessionId;
@@ -106,6 +117,29 @@ export class LemonSliceRenderer extends BaseAvatarRenderer {
     }
     return res.json().catch(() => ({}));
   }
+}
+
+/**
+ * The settings page's aspect ratio and model, in LemonSlice's session fields.
+ * "standard" is their flagship, which they select by sending no model at all.
+ */
+export function renderPayload(avatar) {
+  const { aspectRatio, model } = avatar.render || {};
+  const payload = {
+    ...(aspectRatio && { aspect_ratio: aspectRatio }),
+    ...(model && model !== "standard" && { model }),
+  };
+  return Object.keys(payload).length ? payload : null;
+}
+
+/**
+ * The LemonSlice agent id behind an avatar adopted from the account's agents,
+ * or null for one made from an image. Photo avatars keep a URL in
+ * `providerAvatarId`, so the two cannot be confused.
+ */
+export function agentIdOf(avatar) {
+  const id = avatar.providerAvatarId;
+  return typeof id === "string" && /^agent_[A-Za-z0-9]+$/.test(id) ? id : null;
 }
 
 const PRIVATE_HOST =

@@ -3,6 +3,26 @@ import { z } from "zod";
 /**
  * How the avatar should behave. Every field optional - there are defaults.
  *
+ * Exported bare so the avatar settings page can edit the same fields it was
+ * created with; there, an empty string clears a field.
+ */
+export const behaviourFields = z.object({
+  systemPrompt: z.string().trim().max(4000).optional(),
+  greeting: z.string().trim().max(400).optional(),
+  language: z.string().trim().min(2).max(10).optional(),
+  temperature: z.coerce.number().min(0).max(2).optional(),
+  motionPrompt: z.string().trim().max(400).optional(),
+  idlePrompt: z.string().trim().max(400).optional(),
+  maxCallSeconds: z.coerce.number().int().min(60).max(14400).optional(),
+  voice: z.string().trim().max(60).optional(),
+  voiceSpeed: z.coerce.number().min(0.5).max(1.5).optional(),
+  useDefaultPrompt: z.boolean().optional(),
+  llmModel: z.string().trim().max(80).optional(),
+});
+
+/**
+ * The brief as the create flows receive it.
+ *
  * Nested under one key so the three create flows forward it as a unit and
  * cannot drift apart on which fields they happen to pass through.
  */
@@ -18,22 +38,16 @@ const behaviour = z.preprocess(
       return value;
     }
   },
-  z
-    .object({
-      systemPrompt: z.string().trim().max(4000).optional(),
-      greeting: z.string().trim().max(400).optional(),
-      language: z.string().trim().min(2).max(10).optional(),
-      temperature: z.coerce.number().min(0).max(2).optional(),
-      motionPrompt: z.string().trim().max(400).optional(),
-      maxCallSeconds: z.coerce.number().int().min(60).max(14400).optional(),
-    })
-    .optional(),
+  behaviourFields.optional(),
 );
+
+export const gender = z.enum(["female", "male"]);
 
 const source = z.object({
   name: z.string().trim().min(1, "Name is required").max(80),
   // Omitted means "let the registry pick the cheapest capable vendor".
   providerId: z.string().trim().min(1).optional(),
+  gender: gender.optional(),
   behaviour,
 });
 
@@ -44,15 +58,19 @@ export const studioValidation = {
       providerAvatarId: z.string().trim().min(1),
       // Optional: falls back to the vendor's own name for the avatar.
       name: z.string().trim().max(80).optional(),
+      gender: gender.optional(),
       behaviour,
     }),
   },
-  createFromVideo: { body: source },
-  createFromPhoto: {
+  setStockGender: {
     body: z.object({
-      name: z.string().trim().min(1, "Name is required").max(80),
-      // Omitted means "let the registry pick the cheapest capable vendor".
-      providerId: z.string().trim().min(1).optional(),
+      providerId: z.string().trim().min(1),
+      providerAvatarId: z.string().trim().min(1),
+      gender,
     }),
   },
+  createFromVideo: { body: source },
+  // Same fields as video. It used to list only name and provider, and since
+  // validation replaces the body, the brief was silently dropped.
+  createFromPhoto: { body: source },
 };

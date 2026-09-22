@@ -6,7 +6,8 @@ const personaSchema = new mongoose.Schema(
     workspaceId: { type: mongoose.Schema.Types.ObjectId, ref: "Workspace", required: true, index: true },
     name: { type: String, required: true, trim: true },
     systemPrompt: { type: String, required: true },
-    llmModel: { type: String, default: "claude-sonnet-5" },
+    // Unset means the install default - see ai/catalog.js defaultLlmModel.
+    llmModel: String,
     temperature: { type: Number, min: 0, max: 2, default: 0.7 },
     greeting: String,
 
@@ -23,6 +24,14 @@ const personaSchema = new mongoose.Schema(
      */
     motionPrompt: String,
     idlePrompt: String,
+
+    /** TTS voice id for the configured TTS model; unset uses TTS_VOICE. */
+    voice: String,
+    /** 1 is natural. Mapped onto whatever the TTS model calls its speed option. */
+    voiceSpeed: { type: Number, min: 0.5, max: 1.5 },
+
+    /** Appends RECOMMENDED_PROMPT (ai/prompts/personality.js) to the brief. */
+    useDefaultPrompt: { type: Boolean, default: false },
 
     /** Hard ceiling for one call. Falls back to MAX_CALL_SECONDS when unset. */
     maxCallSeconds: { type: Number, min: 60, max: 14400 },

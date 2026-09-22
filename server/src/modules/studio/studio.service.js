@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import path from "node:path";
-import { Avatar, AvatarAsset, Persona } from "../../models/index.js";
+import { Avatar, AvatarAsset, Persona, Workspace } from "../../models/index.js";
 import {
   availableProviderIds,
   getProvider,
@@ -17,6 +17,15 @@ import {
 import { trainingService } from "../../avatar/training.service.js";
 import { env } from "../../config/env.js";
 import { logger } from "../../config/logger.js";
+import { DEFAULT_PROMPT } from "../../ai/prompts/personality.js";
+import {
+  ASPECT_RATIOS,
+  RENDER_MODELS,
+  defaultLlmModel,
+  defaultVoiceFor,
+  llmModels,
+  voicesForTts,
+} from "../../ai/catalog.js";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -45,10 +54,6 @@ const LANGUAGES = [
   { code: "ja", label: "Japanese" },
 ];
 
-const DEFAULT_PROMPT =
-  "You are a friendly AI avatar speaking with someone over video. " +
-  "Keep replies to two or three sentences and sound like a person, not a brochure.";
-
 /**
  * Behaviour is stored as a Persona rather than on the Avatar.
  *
@@ -57,8 +62,20 @@ const DEFAULT_PROMPT =
  * while a full-pipeline vendor gets it in its own session payload. One field on
  * the avatar would have hidden that difference.
  */
-async function createPersona({ workspace, name, behaviour = {} }) {
-  const { systemPrompt, greeting, language, temperature, motionPrompt, maxCallSeconds } = behaviour;
+async function createPersona({ workspace, name, behaviour = {}, gender }) {
+  const {
+    systemPrompt,
+    greeting,
+    language,
+    temperature,
+    motionPrompt,
+    idlePrompt,
+    maxCallSeconds,
+    voice,
+    voiceSpeed,
+    useDefaultPrompt,
+    llmModel,
+  } = behaviour;
 
   return Persona.create({
     workspaceId: workspace._id,
@@ -68,12 +85,23 @@ async function createPersona({ workspace, name, behaviour = {} }) {
     language: language || undefined,
     temperature: temperature ?? undefined,
     motionPrompt: motionPrompt?.trim() || undefined,
+    idlePrompt: idlePrompt?.trim() || undefined,
     maxCallSeconds: maxCallSeconds || undefined,
+    // A character with a gender starts with a voice to match.
+    voice: voice?.trim() || (gender ? defaultVoiceFor(gender) : undefined),
+    voiceSpeed: voiceSpeed ?? undefined,
+    useDefaultPrompt: useDefaultPrompt ?? undefined,
+    llmModel: llmModel?.trim() || undefined,
   });
 }
 
+/** Where a ready-made face's gender is recorded on the workspace. */
+const stockKey = (providerId, providerAvatarId) =>
+  // Map keys cannot contain dots.
+  `${providerId}:${providerAvatarId}`.replace(/\./g, "_");
+
 export const studioService = {
-  async createFromPhoto({ workspace, file, name, providerId, behaviour, userId }) {
+  async createFromPhoto({ workspace, file, name, providerId, gender, behaviour, userId }) {
     assertUsableImage(file);
 
     const storage = getStorage();
@@ -109,11 +137,12 @@ export const studioService = {
       throw err;
     }
 
-    const persona = await createPersona({ workspace, name, behaviour });
+    const persona = await createPersona({ workspace, name, behaviour, gender });
 
     const avatar = await Avatar.create({
       workspaceId: workspace._id,
       name,
+      gender,
       sourceType: "photo",
       status: created.status === "ready" ? "ready" : "training",
       providerId: provider.id,
@@ -139,7 +168,7 @@ export const studioService = {
    * takes minutes on the vendor's side. The avatar is created in a `training`
    * state with a job attached, and resolves later via webhook or poll.
    */
-  async createFromVideo({ workspace, file, name, providerId, behaviour, userId }) {
+  async createFromVideo({ workspace, file, name, providerId, gender, behaviour, userId }) {
     assertUsableVideo(file);
 
     const storage = getStorage();
@@ -161,11 +190,12 @@ export const studioService = {
       uploadedBy: userId,
     });
 
-    const persona = await createPersona({ workspace, name, behaviour });
+    const persona = await createPersona({ workspace, name, behaviour, gender });
 
     const avatar = await Avatar.create({
       workspaceId: workspace._id,
       name,
+      gender,
       sourceType: "video",
       status: "training",
       providerId: provider.id,
@@ -220,7 +250,7 @@ export const studioService = {
    * is trained - and because on plans where training is a paid feature, this is
    * the only route to a working avatar.
    */
-  async listStock() {
+  async listStock(workspace) {
     // Same rule as the provider list: a stub's catalogue is development
     // furniture, and its entries point at URLs that do not resolve. Letting
     // them into the picker puts broken tiles in front of real users.
@@ -243,7 +273,20 @@ export const studioService = {
       }),
     );
 
-    return groups.flat();
+    // Untagged faces come back with no gender and appear under both.
+    return groups.flat().map((a) => ({
+      ...a,
+      gender: workspace?.stockGenders?.get(stockKey(a.providerId, a.providerAvatarId)) || null,
+    }));
+  },
+
+  /** Records whether a ready-made face is a female or male character. */
+  async setStockGender({ workspace, providerId, providerAvatarId, gender }) {
+    await Workspace.updateOne(
+      { _id: workspace._id },
+      { $set: { [`stockGenders.${stockKey(providerId, providerAvatarId)}`]: gender } },
+    );
+    return { providerId, providerAvatarId, gender };
   },
 
   /**
@@ -253,7 +296,7 @@ export const studioService = {
    * it. Deleting it later must therefore not delete anything on their side -
    * it is not ours to remove.
    */
-  async createFromStock({ workspace, providerId, providerAvatarId, name, behaviour, userId }) {
+  async createFromStock({ workspace, providerId, providerAvatarId, name, gender, behaviour, userId }) {
     if (!hasStockAvatars(providerId)) {
       throw unprocessable(`Provider "${providerId}" has no ready-made avatars`);
     }
@@ -268,16 +311,36 @@ export const studioService = {
     }
 
     const resolvedName = name?.trim() || chosen.name;
-    const persona = await createPersona({ workspace, name: resolvedName, behaviour });
+    const resolvedGender =
+      gender || workspace.stockGenders?.get(stockKey(providerId, providerAvatarId)) || undefined;
+
+    // The vendor's own settings for this face - its brief, language, pacing -
+    // are the starting point; anything sent with the request wins over them.
+    const described = await getProvider(providerId)
+      .describeStockAvatar?.(providerAvatarId)
+      .catch((err) => {
+        logger.warn({ providerId, providerAvatarId, err: err.message }, "stock avatar details unavailable");
+        return null;
+      });
+
+    const persona = await createPersona({
+      workspace,
+      name: resolvedName,
+      behaviour: { ...described?.behaviour, ...behaviour },
+      gender: resolvedGender,
+    });
 
     const avatar = await Avatar.create({
       workspaceId: workspace._id,
       name: resolvedName,
+      gender: resolvedGender,
+      render: described?.render,
       sourceType: "stock",
       status: "ready",
       providerId,
       providerAvatarId,
       previewUrl: chosen.previewUrl,
+      previewVideoUrl: chosen.previewVideoUrl,
       personaId: persona._id,
       createdBy: userId,
     });
@@ -324,6 +387,15 @@ export const studioService = {
         })),
       defaultPrompt: DEFAULT_PROMPT,
       languages: LANGUAGES,
+      // Empty when the TTS model is not one the catalogue knows; the settings
+      // page then offers only the install default.
+      voices: voicesForTts(),
+      defaultVoice: defaultVoiceFor(),
+      defaultVoices: { female: defaultVoiceFor("female"), male: defaultVoiceFor("male") },
+      llmModels: llmModels(),
+      defaultLlmModel: defaultLlmModel(),
+      renderModels: RENDER_MODELS,
+      aspectRatios: ASPECT_RATIOS,
       limits: {
         photo: { maxBytes: MAX_IMAGE_BYTES, types: [...ALLOWED_IMAGE_TYPES] },
         video: { maxBytes: MAX_VIDEO_BYTES, types: [...ALLOWED_VIDEO_TYPES] },

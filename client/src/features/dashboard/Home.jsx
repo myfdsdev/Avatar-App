@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { avatarApi } from "@/services/avatar.api";
-import { useCreateAvatar } from "@/store/createAvatar.store";
 import { PRESETS } from "@/features/studio/presets";
 import MediaPreview from "@/components/media/MediaPreview";
 import Button from "@/components/common/Button";
@@ -18,8 +17,8 @@ import Button from "@/components/common/Button";
  * fastest way to a first call.
  */
 export default function Home() {
-  const show = useCreateAvatar((s) => s.show);
-  const showTemplate = useCreateAvatar((s) => s.showTemplate);
+  const navigate = useNavigate();
+  const show = () => navigate("/studio");
   const { data: avatars, isLoading } = useQuery({
     queryKey: ["avatars"],
     queryFn: avatarApi.list,
@@ -37,7 +36,7 @@ export default function Home() {
         </div>
         <div className="scroll-row mt-5 gap-4 pb-3">
           {PRESETS.map((preset) => (
-            <TemplateCard key={preset.id} preset={preset} onPick={() => showTemplate(preset)} />
+            <TemplateCard key={preset.id} preset={preset} onPick={() => navigate(`/studio?template=${preset.id}`)} />
           ))}
         </div>
       </section>

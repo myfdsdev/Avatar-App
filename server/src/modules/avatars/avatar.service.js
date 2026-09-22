@@ -3,8 +3,9 @@ import { avatarRepository } from "./avatar.repository.js";
 import { CAPABILITIES, isDevelopmentOnly } from "../../avatar/capabilities.js";
 import { isConfigured } from "../../avatar/providers/registry.js";
 import { trainingService } from "../../avatar/training.service.js";
-import { TrainingJob } from "../../models/index.js";
+import { Persona, TrainingJob } from "../../models/index.js";
 import { logger } from "../../config/logger.js";
+import { DEFAULT_PROMPT } from "../../ai/prompts/personality.js";
 
 const notFound = () => {
   const err = new Error("Avatar not found");
@@ -43,6 +44,45 @@ export const avatarService = {
       avatar = await avatarRepository.findById(workspaceId, id);
     }
     return decorate(avatar);
+  },
+
+  /**
+   * Edits from the settings page: the avatar's own fields plus its brief.
+   *
+   * Sent as partial patches while someone types, so only the fields present
+   * are touched. An empty string clears an optional field; the brief itself
+   * falls back to the default, since a persona cannot be without one.
+   */
+  async update(workspaceId, id, { name, gender, render, persona }) {
+    const avatar = await avatarRepository.findById(workspaceId, id);
+    if (!avatar) throw notFound();
+
+    const set = {};
+    if (name !== undefined) set.name = name;
+    if (gender !== undefined) set.gender = gender;
+    for (const [key, value] of Object.entries(render || {})) set[`render.${key}`] = value;
+    if (Object.keys(set).length) await avatarRepository.updateById(workspaceId, id, { $set: set });
+
+    if (persona || name !== undefined) {
+      const patch = personaPatch(persona || {});
+      if (name !== undefined) patch.$set.name = `${name} persona`;
+
+      const empty = !Object.keys(patch.$set).length && !patch.$unset;
+      if (avatar.personaId) {
+        if (!empty) await Persona.updateOne({ _id: avatar.personaId._id, workspaceId }, patch);
+      } else {
+        // Avatars from before personas existed get one on first edit.
+        const created = await Persona.create({
+          workspaceId,
+          name: `${name ?? avatar.name} persona`,
+          systemPrompt: DEFAULT_PROMPT,
+          ...patch.$set,
+        });
+        await avatarRepository.updateById(workspaceId, id, { $set: { personaId: created._id } });
+      }
+    }
+
+    return this.get(workspaceId, id);
   },
 
   /** The avatar's public link: whether it is on, and its token. */
@@ -84,6 +124,21 @@ export const avatarService = {
     return { id };
   },
 };
+
+/** Turns a partial brief into $set / $unset, with blanks meaning "clear". */
+function personaPatch(fields) {
+  const $set = {};
+  const $unset = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (value === "" || value === null) {
+      if (key === "systemPrompt") $set.systemPrompt = DEFAULT_PROMPT;
+      else $unset[key] = "";
+    } else {
+      $set[key] = value;
+    }
+  }
+  return Object.keys($unset).length ? { $set, $unset } : { $set };
+}
 
 /**
  * Brings training avatars up to date on read.

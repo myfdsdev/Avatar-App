@@ -1,0 +1,115 @@
+import { env } from "../config/env.js";
+
+/**
+ * What a persona can choose from: voices, language models, and how the face is
+ * rendered.
+ *
+ * One list read by both sides - the studio offers it and the call pipeline
+ * honours it - so a setting can never be offered that the call then ignores.
+ */
+
+/**
+ * Inworld voices, spoken through LiveKit Inference. Only meaningful while the
+ * TTS model is an Inworld one; `voicesForTts` says so rather than offering
+ * names another vendor will refuse.
+ */
+const INWORLD_VOICES = [
+  { id: "Ashley", gender: "female", description: "Warm, natural" },
+  { id: "Olivia", gender: "female", description: "British, composed" },
+  { id: "Wendy", gender: "female", description: "Bright, friendly" },
+  { id: "Julia", gender: "female", description: "Calm, clear" },
+  { id: "Sarah", gender: "female", description: "Confident, upbeat" },
+  { id: "Deborah", gender: "female", description: "Mature, gentle" },
+  { id: "Elizabeth", gender: "female", description: "Polished, professional" },
+  { id: "Priya", gender: "female", description: "Indian English" },
+  { id: "Anjali", gender: "female", description: "Indian, soft" },
+  { id: "Luna", gender: "female", description: "Airy, youthful" },
+  { id: "Pixie", gender: "female", description: "Playful, animated" },
+  { id: "Dennis", gender: "male", description: "Smooth, calm, friendly" },
+  { id: "Alex", gender: "male", description: "Energetic, expressive" },
+  { id: "Edward", gender: "male", description: "Clear, measured" },
+  { id: "Mark", gender: "male", description: "Relaxed, conversational" },
+  { id: "Timothy", gender: "male", description: "Light, youthful" },
+  { id: "Craig", gender: "male", description: "British, warm" },
+  { id: "Ronald", gender: "male", description: "Deep, mature" },
+  { id: "Theodore", gender: "male", description: "Gravelly, seasoned" },
+  { id: "Shaun", gender: "male", description: "Easygoing" },
+  { id: "Arjun", gender: "male", description: "Indian, steady" },
+  { id: "Hades", gender: "male", description: "Dark, dramatic" },
+];
+
+const DEFAULT_VOICE = { female: "Ashley", male: "Dennis" };
+
+export function voicesForTts(model = env.ttsModel) {
+  return model.startsWith("inworld/") ? INWORLD_VOICES : [];
+}
+
+/** The voice a new avatar gets for its character, or the install default. */
+export function defaultVoiceFor(gender) {
+  if (voicesForTts().length && DEFAULT_VOICE[gender]) return DEFAULT_VOICE[gender];
+  return env.ttsVoice;
+}
+
+/**
+ * The speed knob, in whichever option this TTS model calls it. Unknown models
+ * get nothing rather than a guessed key the gateway would reject.
+ */
+export function speedOption(model, speed) {
+  if (speed == null || speed === 1) return undefined;
+  if (model.startsWith("inworld/")) return { speaking_rate: speed };
+  if (/^(cartesia|xai|fishaudio)\//.test(model)) return { speed };
+  return undefined;
+}
+
+/**
+ * Language models. Hosted ones go through LiveKit Inference with the LiveKit
+ * credential; Claude needs its own key, because Inference does not carry it.
+ */
+const HOSTED_LLMS = [
+  { id: "google/gemma-4-31b-it", label: "Gemma 4 31B" },
+  { id: "openai/gpt-5-mini", label: "GPT-5 mini" },
+  { id: "openai/gpt-4.1-mini", label: "GPT-4.1 mini" },
+  { id: "google/gemini-3-flash", label: "Gemini 3 Flash" },
+  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { id: "deepseek-ai/deepseek-v3.2", label: "DeepSeek V3.2" },
+  { id: "moonshotai/kimi-k2.6", label: "Kimi K2.6" },
+  { id: "xai/grok-4-1-fast-non-reasoning", label: "Grok 4.1 Fast" },
+];
+
+const CLAUDE_LLMS = [
+  { id: "claude-opus-5", label: "Claude Opus 5" },
+  { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
+  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
+];
+
+/** Hosted ids are "provider/model"; Claude ids are bare. */
+export const isHostedModel = (id) => typeof id === "string" && id.includes("/");
+
+export function llmModels() {
+  const claude = Boolean(env.anthropicApiKey);
+  return [
+    ...CLAUDE_LLMS.map((m) => ({
+      ...m,
+      available: claude,
+      ...(claude ? {} : { unavailableReason: "Needs ANTHROPIC_API_KEY" }),
+    })),
+    ...HOSTED_LLMS.map((m) => ({ ...m, available: true })),
+  ];
+}
+
+/** What an avatar with no model of its own runs on. */
+export const defaultLlmModel = () =>
+  env.anthropicApiKey ? env.defaultLlmModel : env.fallbackLlmModel;
+
+/** LemonSlice render options, as their session API names them. */
+export const RENDER_MODELS = [
+  { id: "standard", label: "Standard" },
+  { id: "flash", label: "Flash" },
+  { id: "lite", label: "Lite" },
+];
+
+export const ASPECT_RATIOS = [
+  { id: "2x3", label: "2:3" },
+  { id: "9x16", label: "9:16" },
+  { id: "1x1", label: "1:1" },
+];

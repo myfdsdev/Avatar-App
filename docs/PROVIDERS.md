@@ -9,7 +9,7 @@ this table is for reading.
 |---|---|---|---|---|---|---|---|---|---|
 | **mock** *(stub)* | render-only | livekit | yes | yes | no | yes | yes | yes | 0 |
 | **mock-hosted** *(stub)* | full-pipeline | daily | yes | yes | yes | no | yes | yes | 0 |
-| **LemonSlice 2.1** | render-only | livekit | yes | no | no | yes | **yes** | **yes** | 0.164 |
+| **LemonSlice 2.1** | render-only | livekit | yes | no | yes* | yes | **yes** | **yes** | 0.164 |
 | Simli Trinity-1 | render-only | livekit | yes | no | no | yes | no | **no** | 0.01 |
 | HeyGen LiveAvatar | render-only | livekit | yes | yes | yes | LITE only | no | **no** | 0.10 |
 
@@ -18,11 +18,22 @@ are hidden from the studio unless `AVATAR_PROVIDER` explicitly names one.
 
 ## Current state
 
-**LemonSlice is the only real vendor implemented.** It covers photo avatars.
-There is no real vendor for video clones or ready-made avatars at present, so
-the client offers photo only: "Create" opens a single dialog (photo + brief).
-The server's `/studio/video` and `/studio/stock` endpoints remain, so bringing
-either source back is client work only.
+**LemonSlice is the only real vendor implemented.** It covers photo avatars
+and, marked * above, ready-made ones: the agents saved on the LemonSlice
+account behind `LEMONSLICE_API_KEY`, listed from `GET /api/agents`. That
+endpoint is not in LemonSlice's published reference - it is what their
+dashboard uses, and it answers to the API key. LemonSlice's public library is
+not reachable with a key, so only the account's own agents appear. Adopting
+one copies its own settings (`GET /api/agents/{id}`: prompt, language, voice
+speed, movement prompts, aspect ratio, model) into the new persona as a
+starting point. A call to it passes its `agent_id` rather than an image, plus
+the avatar's aspect ratio and render model as session options. LemonSlice
+agents carry no gender, so the workspace tags each one once, in the creator.
+
+"Create" opens the avatar creator page (`/studio`); its library shows photos
+added that visit followed by those agents. There is no real vendor for video
+clones at present; the server's `/studio/video` endpoint remains, so bringing
+it back is client work only.
 
 Tavus was previously integrated for video clones and ready-made faces. It was
 removed; the adapter is in git history if it is wanted back. The full-pipeline

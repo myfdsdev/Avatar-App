@@ -1,44 +1,30 @@
-import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import AppShell from "@/components/layout/AppShell";
 import RequireAuth from "./RequireAuth";
 import SignIn from "@/features/auth/SignIn";
 import Home from "@/features/dashboard/Home";
 import AvatarList from "@/features/avatars/AvatarList";
-import CreateAvatarDialog from "@/features/studio/CreateAvatarDialog";
+import AvatarDetail from "@/features/avatars/AvatarDetail";
+import AvatarCreator from "@/features/studio/AvatarCreator";
 import CallRoom from "@/features/call/CallRoom";
 import TalkPage from "@/features/talk/TalkPage";
 import Usage from "@/features/analytics/Usage";
 import ConversationList from "@/features/conversations/ConversationList";
 import ConversationDetail from "@/features/conversations/ConversationDetail";
 import DesignPreview from "@/features/_design/DesignPreview";
-import { useCreateAvatar } from "@/store/createAvatar.store";
 
 /**
- * Signed-in pages live inside the shell; sign-in and the call room do not.
+ * Signed-in pages live inside the shell; sign-in, the avatar creator and the
+ * call room do not.
  *
- * The call room is deliberately outside: a call wants the whole window, and a
- * sidebar during one is navigation nobody is going to use.
- *
- * The create dialog is mounted with the shell so any page in it can open it.
+ * The creator and the call room are deliberately outside: each wants the whole
+ * window, and a sidebar beside them is navigation nobody is going to use.
  */
 const app = (element, { wide = false } = {}) => (
   <RequireAuth>
-    <AppShell wide={wide}>
-      {element}
-      <CreateAvatarDialog />
-    </AppShell>
+    <AppShell wide={wide}>{element}</AppShell>
   </RequireAuth>
 );
-
-/** `/studio` used to be a page. Old links now land on the library with the form open. */
-function OpenCreateDialog() {
-  const show = useCreateAvatar((s) => s.show);
-  useEffect(() => {
-    show();
-  }, [show]);
-  return <Navigate to="/avatars" replace />;
-}
 
 export default function AppRouter() {
   return (
@@ -51,11 +37,12 @@ export default function AppRouter() {
 
       <Route path="/" element={app(<Home />, { wide: true })} />
       <Route path="/avatars" element={app(<AvatarList />)} />
+      <Route path="/avatars/:id" element={app(<AvatarDetail />, { wide: true })} />
       <Route
         path="/studio"
         element={
           <RequireAuth>
-            <OpenCreateDialog />
+            <AvatarCreator />
           </RequireAuth>
         }
       />

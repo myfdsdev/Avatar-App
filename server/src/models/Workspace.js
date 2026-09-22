@@ -13,6 +13,9 @@ const workspaceSchema = new mongoose.Schema(
       concurrencyLimit: { type: Number, default: 3 },
       zeroDataRetention: { type: Boolean, default: false },
     },
+    // A vendor's ready-made avatars carry no gender, so the workspace records
+    // one per face, keyed "providerId:providerAvatarId".
+    stockGenders: { type: Map, of: { type: String, enum: ["female", "male"] } },
   },
   { timestamps: true },
 );
