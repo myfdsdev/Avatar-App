@@ -22,6 +22,7 @@ router.put("/users/:id/plan", validate(adminValidation.assignPlan), adminControl
 
 router.get("/plans", adminController.listPlans);
 router.post("/plans", validate(adminValidation.createPlan), adminController.createPlan);
+router.post("/plans/templates", adminController.addPlanTemplates);
 router.patch("/plans/:id", validate(adminValidation.updatePlan), adminController.updatePlan);
 router.delete("/plans/:id", validate(adminValidation.byId), adminController.removePlan);
 

@@ -24,7 +24,14 @@ async function refreshTokens() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ refreshToken }),
       });
-      if (!res.ok) throw new Error("refresh failed");
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        if (body?.error?.code === "account_blocked") {
+          clear();
+          window.location.assign("/login?blocked=1");
+        }
+        throw new Error("refresh failed");
+      }
 
       const body = await res.json();
       setTokens({ accessToken: body.accessToken, refreshToken: body.refreshToken });
@@ -75,7 +82,12 @@ async function request(path, options = {}) {
       window.location.assign("/login?blocked=1");
     }
 
-    const error = new Error(payload?.error?.message || `Request failed (${res.status})`);
+    // "Validation failed" alone tells nobody what to fix; the details do.
+    const details = payload?.error?.details;
+    const message = details?.length
+      ? details.map((d) => d.message).join(". ")
+      : payload?.error?.message || `Request failed (${res.status})`;
+    const error = new Error(message);
     error.status = res.status;
     error.code = payload?.error?.code;
     error.details = payload?.error?.details;

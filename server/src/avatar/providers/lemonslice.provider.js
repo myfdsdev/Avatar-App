@@ -4,6 +4,19 @@ import { logger } from "../../config/logger.js";
 const AGENTS_API = "https://lemonslice.com/api/agents";
 
 /**
+ * The LemonSlice agent id behind an avatar adopted from the account's agents,
+ * or null for one made from an image. Photo avatars keep a URL in
+ * `providerAvatarId`, so the two cannot be confused.
+ *
+ * Lives here rather than in the renderer so the API can ask without loading
+ * the LiveKit plugin.
+ */
+export function agentIdOf(avatar) {
+  const id = avatar.providerAvatarId;
+  return typeof id === "string" && /^agent_[A-Za-z0-9]+$/.test(id) ? id : null;
+}
+
+/**
  * LemonSlice - photo avatars.
  *
  * Unusually, there is no avatar to create. LemonSlice takes the image URL at

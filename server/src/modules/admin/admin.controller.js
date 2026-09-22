@@ -46,6 +46,10 @@ export const adminController = {
     res.status(201).json({ plan: await plansService.create(req.body, req.admin._id) });
   }),
 
+  addPlanTemplates: asyncHandler(async (req, res) => {
+    res.json(await plansService.addTemplates(req.admin._id));
+  }),
+
   updatePlan: asyncHandler(async (req, res) => {
     res.json({ plan: await plansService.update(req.params.id, req.body) });
   }),

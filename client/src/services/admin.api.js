@@ -15,6 +15,8 @@ export const adminApi = {
 
   plans: () => api.get("/admin/plans").then((r) => r.plans),
   createPlan: (plan) => api.post("/admin/plans", plan).then((r) => r.plan),
+  /** Adds the ready-made Free / Starter / Pro / Business plans that are not there yet. */
+  addPlanTemplates: () => api.post("/admin/plans/templates"),
   updatePlan: (id, patch) => api.patch(`/admin/plans/${id}`, patch).then((r) => r.plan),
   removePlan: (id) => api.del(`/admin/plans/${id}`),
 };

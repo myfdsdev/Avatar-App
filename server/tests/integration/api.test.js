@@ -169,6 +169,30 @@ describe("rooms", () => {
     await demo.del(`/api/rooms/${body.conversationId}`);
   });
 
+  test("a call that never connected stops holding a concurrency slot", async () => {
+    const { Conversation } = await import("../../src/models/index.js");
+    const old = new Date(Date.now() - 10 * 60 * 1000);
+    const stuck = await Conversation.create({
+      workspaceId: seeded.workspace._id,
+      avatarId: seeded.avatar._id,
+      roomName: "call-stuck",
+      providerId: "mock",
+      pipelineMode: "render-only",
+      transport: "livekit",
+      status: "pending",
+      createdAt: old,
+    });
+
+    const { status, body } = await demo.post("/api/rooms", { avatarId: String(seeded.avatar._id) });
+    assert.equal(status, 201);
+
+    const after = await Conversation.findById(stuck._id).lean();
+    assert.equal(after.status, "failed");
+    assert.equal(after.endReason, "never connected");
+
+    await demo.del(`/api/rooms/${body.conversationId}`);
+  });
+
   test("the join token carries the room grant and agent dispatch", async () => {
     const { body } = await demo.post("/api/rooms", { avatarId: String(seeded.avatar._id) });
 

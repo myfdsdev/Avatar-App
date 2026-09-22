@@ -44,6 +44,23 @@ export function voicesForTts(model = env.ttsModel) {
   return model.startsWith("inworld/") ? INWORLD_VOICES : [];
 }
 
+/**
+ * The voice a call actually speaks with: the persona's own, else a legacy Voice
+ * record's - but only when it belongs to this TTS model (the seeded
+ * "mock-voice-1" would otherwise be sent to Inworld and fail the call) - else
+ * the install default. The pipeline and the preflight check both use this, so
+ * they can never disagree about what will be spoken.
+ */
+export function voiceFor(avatar, model = env.ttsModel) {
+  const own = avatar?.persona?.voice;
+  if (own) return { voice: own, assigned: true };
+  const legacy = avatar?.voice;
+  if (legacy?.providerVoiceId && model.startsWith(`${legacy.provider}/`)) {
+    return { voice: legacy.providerVoiceId, assigned: true };
+  }
+  return { voice: env.ttsVoice, assigned: false };
+}
+
 /** The voice a new avatar gets for its character, or the install default. */
 export function defaultVoiceFor(gender) {
   if (voicesForTts().length && DEFAULT_VOICE[gender]) return DEFAULT_VOICE[gender];
@@ -100,6 +117,20 @@ export function llmModels() {
 /** What an avatar with no model of its own runs on. */
 export const defaultLlmModel = () =>
   env.anthropicApiKey ? env.defaultLlmModel : env.fallbackLlmModel;
+
+/**
+ * Offered languages. Kept server-side so the list cannot drift from what the
+ * speech models are actually configured for.
+ */
+export const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "hi", label: "Hindi" },
+  { code: "es", label: "Spanish" },
+  { code: "fr", label: "French" },
+  { code: "de", label: "German" },
+  { code: "pt", label: "Portuguese" },
+  { code: "ja", label: "Japanese" },
+];
 
 /** LemonSlice render options, as their session API names them. */
 export const RENDER_MODELS = [

@@ -48,6 +48,12 @@ npm run dev                          # client + api + agent worker
 `npm --prefix server run check` prints one line per capability, so a wrong
 credential is obvious before anything else is started.
 
+`npm --prefix server run check:avatars` checks every avatar the way a call
+would - vendor configured, picture reachable, voice and language model known to
+the pipeline - without starting one. Every call runs the same check first
+(`server/src/agent/preflight.js`), so a bad setting ends the call with its
+reason instead of leaving the caller on "Connecting...".
+
 Client on http://localhost:5173, API on http://localhost:4000.
 
 - **http://localhost:5173/avatars** - avatar library, start a call

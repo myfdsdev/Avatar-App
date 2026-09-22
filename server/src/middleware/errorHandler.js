@@ -15,6 +15,12 @@ export function notFound(req, res) {
  */
 // eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, next) {
+  // Multer's own errors carry no status: an oversized upload is a 413 with a
+  // plain message, not a 500.
+  if (err.name === "MulterError") {
+    err.statusCode = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+    if (err.code === "LIMIT_FILE_SIZE") err.message = "That file is too large.";
+  }
   const status = err.statusCode || err.status || 500;
 
   // An error that set its own status is a decision we made - a vendor that

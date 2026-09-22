@@ -105,6 +105,30 @@ describe("editing an avatar", () => {
     assert.equal(unknown.status, 400, "fields outside the settings page are not editable here");
   });
 
+  test("refuses a voice or language model the call pipeline does not have", async () => {
+    const avatar = await adopt({ name: "Unknowns" });
+
+    const voice = await demo.patch(`/api/avatars/${avatar._id}`, { persona: { voice: "Nobody" } });
+    assert.equal(voice.status, 400);
+
+    const model = await demo.patch(`/api/avatars/${avatar._id}`, { persona: { llmModel: "gpt-99" } });
+    assert.equal(model.status, 400);
+  });
+
+  test("a call to an avatar whose settings would break it is refused with the reason", async () => {
+    const { body } = await demo.get("/api/avatars");
+    const seeded = body.avatars.find((a) => a.providerId === "mock");
+    const { Persona } = await import("../../src/models/index.js");
+    // Bypasses the API's own check, as an old or hand-edited record would.
+    await Persona.updateOne({ _id: seeded.personaId._id }, { $set: { voice: "Nobody" } });
+
+    const { status, body: refused } = await demo.post("/api/rooms", { avatarId: String(seeded._id) });
+    assert.equal(status, 422);
+    assert.match(refused.error.message, /cannot take calls yet/);
+
+    await Persona.updateOne({ _id: seeded.personaId._id }, { $unset: { voice: "" } });
+  });
+
   test("cannot edit another workspace's avatar", async () => {
     const avatar = await adopt({ name: "Private" });
     const stranger = await signUp(app.baseUrl);

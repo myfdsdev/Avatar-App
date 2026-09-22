@@ -1,10 +1,12 @@
 import crypto from "node:crypto";
-import { Avatar, Conversation, Persona } from "../../models/index.js";
+import { Avatar, Conversation, Persona, Voice } from "../../models/index.js";
 import { CAPABILITIES } from "../../avatar/capabilities.js";
 import { getProvider } from "../../avatar/providers/registry.js";
 import { createJoinToken, endRoom } from "../../integrations/livekit/index.js";
 import { usageService } from "../billing/usage.service.js";
 import { logger } from "../../config/logger.js";
+import { env } from "../../config/env.js";
+import { preflight } from "../../agent/preflight.js";
 
 /**
  * Starting a call is where the two vendor shapes diverge, and the difference is
@@ -18,12 +20,20 @@ import { logger } from "../../config/logger.js";
  * Either way the client receives the same envelope - transport, url, token -
  * so it does not branch on vendor, only on transport.
  */
+// A caller has this long to get from "Start call" to connected.
+const STALE_PENDING_MS = 5 * 60 * 1000;
+// Longer than any call can last (a persona caps at 4 hours; the install's
+// default may be set higher) plus fifteen minutes of slack.
+const STALE_ACTIVE_MS = (Math.max(4 * 3600, env.maxCallSeconds) + 15 * 60) * 1000;
+
 export const roomService = {
   /**
    * @param {{ workspace: object, avatarId: string, userId?: string,
    *           source?: "app"|"link", guest?: { name: string, email?: string } }} input
    */
   async startCall({ workspace, avatarId, userId, source = "app", guest }) {
+    await this.expireStale(workspace._id);
+
     // Checked before anything is created, so a refused call leaves no record
     // and reserves no vendor session.
     await usageService.assertCanStartCall(workspace);
@@ -45,6 +55,21 @@ export const roomService = {
       const err = new Error(`Unknown provider "${avatar.providerId}" on this avatar`);
       err.statusCode = 500;
       throw err;
+    }
+
+    // Our worker would refuse this avatar anyway; saying so here gives the
+    // caller the reason at once instead of a room that opens and closes.
+    if (capabilities.pipelineMode === "render-only") {
+      const [persona, voice] = await Promise.all([
+        avatar.personaId ? Persona.findById(avatar.personaId).lean() : null,
+        avatar.voiceId ? Voice.findById(avatar.voiceId).lean() : null,
+      ]);
+      const { errors } = await preflight({ ...avatar, persona, voice });
+      if (errors.length) {
+        const err = new Error(`This avatar cannot take calls yet: ${errors.join(" ")}`);
+        err.statusCode = 422;
+        throw err;
+      }
     }
 
     const roomName = `call-${crypto.randomUUID()}`;
@@ -88,6 +113,33 @@ export const roomService = {
     );
 
     return { conversationId: conversation.id, ...connection };
+  },
+
+  /**
+   * Closes calls that can no longer be running, so they stop holding a
+   * concurrency slot.
+   *
+   * A call is "pending" from the moment its token is issued until the agent
+   * joins; if the caller closes the tab while it is connecting, nothing else
+   * ever ends it. Likewise an "active" call whose worker died. Pending gets a
+   * few minutes, active its longest possible length plus slack.
+   */
+  async expireStale(workspaceId) {
+    const now = Date.now();
+    const endedAt = new Date(now);
+    const [pending, active] = await Promise.all([
+      Conversation.updateMany(
+        { workspaceId, status: "pending", createdAt: { $lt: new Date(now - STALE_PENDING_MS) } },
+        { $set: { status: "failed", endedAt, endReason: "never connected" } },
+      ),
+      Conversation.updateMany(
+        { workspaceId, status: "active", startedAt: { $lt: new Date(now - STALE_ACTIVE_MS) } },
+        { $set: { status: "ended", endedAt, endReason: "lost - no longer running" } },
+      ),
+    ]);
+    const cleared = pending.modifiedCount + active.modifiedCount;
+    if (cleared) logger.warn({ workspaceId: String(workspaceId), cleared }, "stale calls closed");
+    return cleared;
   },
 
   async endCall({ workspace, conversationId, endReason = "hung up" }) {
@@ -145,11 +197,12 @@ export const roomService = {
    * The status flip is atomic, so exactly one caller computes the duration;
    * the ledger's unique index covers the metering.
    */
-  async finish(conversationId, { endReason } = {}) {
+  async finish(conversationId, { endReason, status = "ended" } = {}) {
     const endedAt = new Date();
     const won = await Conversation.findOneAndUpdate(
       { _id: conversationId, status: { $in: ["pending", "active"] } },
-      { $set: { status: "ended", endedAt, ...(endReason && { endReason }) } },
+      // "failed" when the call never got going - the worker says why in endReason.
+      { $set: { status, endedAt, ...(endReason && { endReason }) } },
       { new: true },
     );
 

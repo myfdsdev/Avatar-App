@@ -1,4 +1,14 @@
 import { z } from "zod";
+import { llmModels, voicesForTts } from "../../ai/catalog.js";
+
+// A voice or model the call pipeline does not know would only fail mid-call,
+// so they are refused when saved. No voice list (a TTS model the catalogue does
+// not cover) means any name is let through, as before.
+const knownVoice = (v) => {
+  const voices = voicesForTts();
+  return !v || !voices.length || voices.some((x) => x.id === v);
+};
+const knownModel = (m) => !m || llmModels().some((x) => x.id === m);
 
 /**
  * How the avatar should behave. Every field optional - there are defaults.
@@ -14,10 +24,10 @@ export const behaviourFields = z.object({
   motionPrompt: z.string().trim().max(400).optional(),
   idlePrompt: z.string().trim().max(400).optional(),
   maxCallSeconds: z.coerce.number().int().min(60).max(14400).optional(),
-  voice: z.string().trim().max(60).optional(),
+  voice: z.string().trim().max(60).optional().refine(knownVoice, "That voice is not available"),
   voiceSpeed: z.coerce.number().min(0.5).max(1.5).optional(),
   useDefaultPrompt: z.boolean().optional(),
-  llmModel: z.string().trim().max(80).optional(),
+  llmModel: z.string().trim().max(80).optional().refine(knownModel, "That language model is not available"),
 });
 
 /**

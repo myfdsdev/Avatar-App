@@ -68,6 +68,10 @@ describe("blocking", () => {
 
     const guest = await anon("POST", `/api/links/${token}/calls`, { name: "Guest" });
     assert.equal(guest.status, 409);
+
+    // The link page says so up front, rather than offering a call it will refuse.
+    const page = await anon("GET", `/api/links/${token}`);
+    assert.equal(page.body.available, false);
   });
 
   test("a wrong password still says only that, for a blocked account too", async () => {
@@ -176,6 +180,21 @@ describe("plans", () => {
 
     const unused = await createPlan();
     assert.equal((await admin.del(`/api/admin/plans/${unused.body.plan._id}`)).status, 200);
+  });
+
+  test("the ready-made plans are added once, and never made the default", async () => {
+    const first = await admin.post("/api/admin/plans/templates");
+    assert.equal(first.status, 200);
+    assert.deepEqual(first.body.added, ["free", "starter", "pro", "business"]);
+    assert.ok(first.body.plans.filter((p) => ["free", "starter", "pro", "business"].includes(p.key)).every((p) => !p.isDefault));
+
+    // An admin's edit survives running it again.
+    const pro = first.body.plans.find((p) => p.key === "pro");
+    await admin.patch(`/api/admin/plans/${pro._id}`, { priceCents: 12345 });
+
+    const again = await admin.post("/api/admin/plans/templates");
+    assert.deepEqual(again.body.added, []);
+    assert.equal(again.body.plans.find((p) => p.key === "pro").priceCents, 12345);
   });
 
   test("only admins manage plans", async () => {

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { queryClient } from "@/lib/queryClient";
 
 const KEY = "avatar-app.auth";
 
@@ -36,6 +37,9 @@ export const useAuth = create((set) => ({
   signedIn: () => Boolean(useAuth.getState().accessToken),
 
   setSession: ({ user, accessToken, refreshToken }) => {
+    // Cached queries are not keyed by account, so a new session starts empty
+    // rather than showing whoever was signed in on this tab before.
+    queryClient.clear();
     const next = { user, accessToken, refreshToken };
     save(next);
     set(next);
@@ -50,6 +54,7 @@ export const useAuth = create((set) => ({
     }),
 
   clear: () => {
+    queryClient.clear();
     save(null);
     set({ user: null, accessToken: null, refreshToken: null });
   },

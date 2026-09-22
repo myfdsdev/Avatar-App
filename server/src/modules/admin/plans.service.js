@@ -1,4 +1,5 @@
 import { Plan, Subscription } from "../../models/index.js";
+import { PLAN_TEMPLATES } from "./plan.templates.js";
 
 /**
  * Plans, as admins manage them.
@@ -60,6 +61,23 @@ export const plansService = {
     await plan.save();
     if (plan.isDefault) await claimDefault(plan._id);
     return (await withUsers([plan.toObject()]))[0];
+  },
+
+  /**
+   * Adds the ready-made plans whose keys are not taken yet. Safe to run again:
+   * anything already there, edited or not, is left alone.
+   */
+  async addTemplates(adminId) {
+    const taken = new Set((await Plan.find().select("key").lean()).map((p) => p.key));
+    const missing = PLAN_TEMPLATES.filter((t) => !taken.has(t.key));
+    if (missing.length) {
+      await Plan.insertMany(missing.map((t) => ({ ...t, createdBy: adminId })));
+    }
+    return {
+      added: missing.map((t) => t.key),
+      skipped: PLAN_TEMPLATES.filter((t) => taken.has(t.key)).map((t) => t.key),
+      plans: await this.list(),
+    };
   },
 
   /** Only a plan nobody is on; one that is in use is archived instead. */

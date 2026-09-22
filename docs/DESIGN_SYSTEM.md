@@ -91,8 +91,10 @@ work), a collapse toggle beside the logo that shrinks it to icons
 (`--sidebar-w-collapsed`, remembered per browser), and the account as a card at
 the bottom whose menu holds Sign out. Only pages that exist are listed.
 `AppShell wide` drops the container for
-edge-to-edge pages. The call room renders outside the shell; a call wants the
-window.
+edge-to-edge pages. The call room sits in the shell like LemonSlice's avatar
+page: a `Panel`, the name and "Customize this avatar" on top, and the call in a
+portrait frame (`PortraitCall`) with Start call at its foot - the avatar page's
+Chat tab uses the same frame. Only the avatar creator renders outside the shell.
 
 **Dashboard (`Home`)** - a wide hero carousel (a create slide, then one per
 callable avatar), then horizontally scrolling shelves (`.scroll-row`) of 5:7

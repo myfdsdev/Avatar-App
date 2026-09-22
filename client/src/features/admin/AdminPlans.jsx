@@ -26,6 +26,9 @@ export default function AdminPlans() {
   );
 }
 
+// Must match server/src/modules/admin/plan.templates.js.
+const TEMPLATE_KEYS = ["free", "starter", "pro", "business"];
+
 const EMPTY = {
   name: "",
   key: "",
@@ -54,6 +57,12 @@ function Plans() {
     queryClient.invalidateQueries({ queryKey: ["admin-user"] });
   };
 
+  const templates = useMutation({
+    mutationFn: adminApi.addPlanTemplates,
+    onSuccess: refresh,
+  });
+  const missingTemplates = TEMPLATE_KEYS.filter((k) => !plans.some((p) => p.key === k));
+
   const toggleActive = useMutation({
     mutationFn: (plan) => adminApi.updatePlan(plan._id, { active: !plan.active, ...(plan.active && { isDefault: false }) }),
     onSuccess: refresh,
@@ -64,8 +73,23 @@ function Plans() {
       <PageHeader
         title="Plans"
         description="Create plans here, then assign them from a user's admin page."
-        action={<Button onClick={() => setEditing("new")}>New plan</Button>}
+        action={
+          <div className="flex gap-2">
+            {plans.length > 0 && missingTemplates.length > 0 && (
+              <Button variant="secondary" onClick={() => templates.mutate()} disabled={templates.isPending}>
+                {templates.isPending ? "Adding…" : "Add ready-made plans"}
+              </Button>
+            )}
+            <Button onClick={() => setEditing("new")}>New plan</Button>
+          </div>
+        }
       />
+      {templates.isError && <p className="mb-4 text-ui text-red">{templates.error.message}</p>}
+      {templates.data?.added.length > 0 && (
+        <p className="mb-4 text-ui text-text-muted">
+          Added {templates.data.added.join(", ")}. None is the default for new sign-ups until you choose one.
+        </p>
+      )}
 
       {isLoading && <p className="text-text-muted">Loading plans…</p>}
       {error && <p className="text-red">{error.message}</p>}
@@ -74,8 +98,16 @@ function Plans() {
       {!isLoading && plans.length === 0 && (
         <Card className="py-12 text-center">
           <p className="text-text-muted">No plans yet.</p>
-          <div className="mt-4 flex justify-center">
-            <Button onClick={() => setEditing("new")}>Create the first plan</Button>
+          <p className="mt-1 text-ui text-text-faint">
+            Start from Free, Starter, Pro and Business - priced above what a call costs - or make your own.
+          </p>
+          <div className="mt-5 flex justify-center gap-2">
+            <Button onClick={() => templates.mutate()} disabled={templates.isPending}>
+              {templates.isPending ? "Adding…" : "Add ready-made plans"}
+            </Button>
+            <Button variant="secondary" onClick={() => setEditing("new")}>
+              Create your own
+            </Button>
           </div>
         </Card>
       )}

@@ -13,6 +13,7 @@ import { createTranscriptRecorder } from "./transcript.recorder.js";
 import { RECOMMENDED_PROMPT } from "../ai/prompts/personality.js";
 import { knowledgePrompt } from "../ai/knowledge.js";
 import { knowledgeService } from "../modules/avatars/knowledge.service.js";
+import { preflight } from "./preflight.js";
 
 /**
  * The realtime worker. One long-lived process, separate from the API, that
@@ -32,6 +33,17 @@ export default defineAgent({
     await ctx.connect();
 
     const { conversation, avatar } = await resolveJob(ctx);
+
+    // Settings that would break the call are caught before a vendor session is
+    // opened, and end it with the reason rather than leaving the caller on
+    // "Connecting..." - see agent/preflight.js.
+    const check = await preflight(avatar);
+    for (const warning of check.warnings) logger.warn({ room: ctx.room.name }, warning);
+    if (check.errors.length) {
+      await abandon(ctx, conversation, `could not start: ${check.errors.join(" ")}`);
+      return;
+    }
+
     const renderer = getRenderer(avatar.providerId);
     const pipeline = buildPipelineConfig(avatar);
     logPipelineMode(pipeline);
@@ -39,6 +51,7 @@ export default defineAgent({
     let session = null;
     let transcript = null;
     let endReason = "room closed";
+    let failed = false;
 
     // The persona's limit, or the install's. The brief promises "calls end
     // automatically after this", and on a public link it is also the only cap
@@ -59,7 +72,7 @@ export default defineAgent({
       await transcript?.flush();
       await renderer.stop().catch((err) => logger.warn({ err: err.message }, "renderer stop failed"));
       await roomService
-        .finish(conversation._id, { endReason })
+        .finish(conversation._id, { endReason, ...(failed && { status: "failed" }) })
         .catch((err) => logger.error({ err, conversationId: String(conversation._id) }, "finish failed"));
     };
 
@@ -93,11 +106,28 @@ export default defineAgent({
     ctx.addShutdownCallback(finish);
     ctx.room.once("disconnected", () => finish());
 
-    // Video first: the avatar should be on screen while the rest warms up,
-    // rather than the caller staring at an empty tile.
-    await renderer.start({ room: ctx.room, avatar });
+    /**
+     * A vendor or the speech stack refusing to start. The call is marked
+     * failed with the reason and the room closed, which disconnects the caller
+     * - so they see it ended instead of waiting on a job that already died.
+     */
+    const failStart = async (err) => {
+      logger.error({ err: err.message, room: ctx.room.name }, "call failed to start");
+      endReason = `failed to start: ${err.message}`;
+      failed = true;
+      await finish();
+      await closeRoom();
+    };
 
     if (!pipeline.available) {
+      // No speech session to hand over, so only a renderer that does not
+      // need one (the local stub) can run here.
+      try {
+        await renderer.start({ room: ctx.room, avatar });
+      } catch (err) {
+        await failStart(err);
+        return;
+      }
       logger.warn({ room: ctx.room.name }, "video-only mode; no conversation");
       await markActive(conversation);
       // Hold the job open so the track keeps publishing until the room closes.
@@ -110,6 +140,18 @@ export default defineAgent({
       llm: pipeline.llm,
       tts: pipeline.tts,
     });
+
+    // The avatar starts with the session in hand and before the session does:
+    // LemonSlice takes over the session's audio output so the voice is played
+    // through the face. Started without it, the renderer crashed on every call
+    // ("reading 'output'") and the caller sat on "Connecting..." for good.
+    // Still video first: the face is up while the conversation warms up.
+    try {
+      await renderer.start({ session, room: ctx.room, avatar });
+    } catch (err) {
+      await failStart(err);
+      return;
+    }
 
     // Keep the placeholder's pulse in step with the agent actually talking.
     session.on("agent_state_changed", (ev) => {
@@ -136,10 +178,15 @@ export default defineAgent({
       await closeRoom();
     });
 
-    await session.start({
-      agent: new voice.Agent({ instructions: instructionsFor(avatar, conversation) }),
-      room: ctx.room,
-    });
+    try {
+      await session.start({
+        agent: new voice.Agent({ instructions: instructionsFor(avatar, conversation) }),
+        room: ctx.room,
+      });
+    } catch (err) {
+      await failStart(err);
+      return;
+    }
 
     await markActive(conversation);
 
@@ -148,6 +195,18 @@ export default defineAgent({
     });
   },
 });
+
+/**
+ * Ends a call that cannot start, before anything was set up for it: marks it
+ * failed with the reason and closes the room so the caller is let go.
+ */
+async function abandon(ctx, conversation, reason) {
+  logger.error({ room: ctx.room.name, reason }, "call abandoned");
+  await roomService
+    .finish(conversation._id, { endReason: reason, status: "failed" })
+    .catch((err) => logger.error({ err, conversationId: String(conversation._id) }, "finish failed"));
+  await endRoom(ctx.room.name).catch(() => {});
+}
 
 /**
  * Finds which conversation this job belongs to.

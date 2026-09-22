@@ -13,6 +13,7 @@
     "seed": "node src/scripts/seed.js",
     "dev:standalone": "node src/scripts/dev-standalone.js",
     "check": "node src/scripts/check-credentials.js",
+    "check:avatars": "node src/scripts/check-avatars.js",
     "agent:start": "node src/agent/worker.js start",
     "smoke": "node src/scripts/smoke-call.js"
   },

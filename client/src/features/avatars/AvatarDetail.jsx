@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { avatarApi } from "@/services/avatar.api";
 import { studioApi } from "@/services/studio.api";
+import Panel from "@/components/layout/Panel";
 import AvatarSettings from "./AvatarSettings";
 import AvatarChat from "./AvatarChat";
 import AvatarMenu from "./AvatarMenu";
@@ -60,12 +61,6 @@ export default function AvatarDetail() {
         <AvatarSettings key={avatar._id} avatar={avatar} options={options} onChange={autosave.queue} />
       )}
     </Panel>
-  );
-}
-
-function Panel({ children }) {
-  return (
-    <div className="min-h-[calc(100vh-4rem)] rounded-xl border border-border bg-surface">{children}</div>
   );
 }
 

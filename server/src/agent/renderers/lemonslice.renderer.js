@@ -1,6 +1,10 @@
 import * as lemonslice from "@livekit/agents-plugin-lemonslice";
 import { BaseAvatarRenderer } from "./base.renderer.js";
 import { logger } from "../../config/logger.js";
+import { agentIdOf } from "../../avatar/providers/lemonslice.provider.js";
+
+// Re-exported so callers that already reach for it here keep working.
+export { agentIdOf };
 
 const CONTROL_API = "https://lemonslice.com/api/liveai/sessions";
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -132,15 +136,6 @@ export function renderPayload(avatar) {
   return Object.keys(payload).length ? payload : null;
 }
 
-/**
- * The LemonSlice agent id behind an avatar adopted from the account's agents,
- * or null for one made from an image. Photo avatars keep a URL in
- * `providerAvatarId`, so the two cannot be confused.
- */
-export function agentIdOf(avatar) {
-  const id = avatar.providerAvatarId;
-  return typeof id === "string" && /^agent_[A-Za-z0-9]+$/.test(id) ? id : null;
-}
 
 const PRIVATE_HOST =
   /^(localhost$|127\.|0\.0\.0\.0$|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?$)/i;

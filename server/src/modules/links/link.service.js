@@ -43,12 +43,18 @@ function verifyCallToken(conversationId, presented) {
   return expected.length === given.length && crypto.timingSafeEqual(expected, given);
 }
 
+/** Whether the workspace owner behind an avatar has been blocked by an admin. */
+async function ownerBlocked(avatar) {
+  const workspace = await Workspace.findById(avatar.workspaceId).select("ownerId").lean();
+  return Boolean(workspace && (await User.exists({ _id: workspace.ownerId, blockedAt: { $ne: null } })));
+}
+
 export const linkService = {
   async describe(token) {
     const avatar = await findAvatar(token);
     return {
       avatar: { name: avatar.name, previewUrl: avatar.previewUrl },
-      available: isCallable(avatar),
+      available: isCallable(avatar) && !(await ownerBlocked(avatar)),
     };
   },
 
@@ -65,7 +71,7 @@ export const linkService = {
 
     // A blocked owner's avatars stop taking calls - including from links
     // already handed out. The guest gets the same answer as any unavailable avatar.
-    if (await User.exists({ _id: workspace.ownerId, blockedAt: { $ne: null } })) {
+    if (await ownerBlocked(avatar)) {
       const err = new Error("This avatar is not available right now. Try again later.");
       err.statusCode = 409;
       throw err;

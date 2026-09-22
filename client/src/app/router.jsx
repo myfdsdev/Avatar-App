@@ -17,11 +17,10 @@ import AdminUser from "@/features/admin/AdminUser";
 import AdminPlans from "@/features/admin/AdminPlans";
 
 /**
- * Signed-in pages live inside the shell; sign-in, the avatar creator and the
- * call room do not.
+ * Signed-in pages live inside the shell; sign-in and the avatar creator do not.
  *
- * The creator and the call room are deliberately outside: each wants the whole
- * window, and a sidebar beside them is navigation nobody is going to use.
+ * The creator is deliberately outside: it wants the whole window. The call
+ * room used to be too, and now sits in the shell like LemonSlice's avatar page.
  */
 const app = (element, { wide = false } = {}) => (
   <RequireAuth>
@@ -58,14 +57,7 @@ export default function AppRouter() {
       <Route path="/admin/users/:id" element={app(<AdminUser />)} />
       <Route path="/admin/plans" element={app(<AdminPlans />)} />
 
-      <Route
-        path="/call/:avatarId"
-        element={
-          <RequireAuth>
-            <CallRoom />
-          </RequireAuth>
-        }
-      />
+      <Route path="/call/:avatarId" element={app(<CallRoom />, { wide: true })} />
 
       {/* Reference surface for the design system; not part of the product. */}
       <Route path="/_design" element={<DesignPreview />} />

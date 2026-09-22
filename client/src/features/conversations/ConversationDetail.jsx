@@ -133,6 +133,10 @@ function Turn({ turn, speaker, offset, avatar }) {
 }
 
 function emptyMessage(c) {
+  // The worker records why a call never got going; say it rather than guess.
+  if (c.status === "failed") {
+    return `This call could not start${c.endReason ? `: ${c.endReason}` : "."}`;
+  }
   if (c.pipelineMode === "full-pipeline") {
     return "This avatar's vendor runs the conversation itself, so no transcript is recorded here.";
   }

@@ -78,6 +78,16 @@ describe("adding documents", () => {
     assert.match(body.error.message, /Unsupported document type/);
   });
 
+  test("an oversized file is refused as too large, not as a server fault", async () => {
+    const avatar = await newAvatar("Big");
+    const { status, body } = await upload(demo, avatar._id, {
+      buffer: Buffer.alloc(11 * 1024 * 1024, 97),
+      filename: "huge.txt",
+    });
+    assert.equal(status, 413);
+    assert.match(body.error.message, /too large/);
+  });
+
   test("caps how many one avatar holds", async () => {
     const avatar = await newAvatar("Full");
     for (let i = 0; i < MAX_DOCS; i += 1) {

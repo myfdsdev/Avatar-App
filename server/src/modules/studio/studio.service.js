@@ -21,6 +21,7 @@ import { logger } from "../../config/logger.js";
 import { DEFAULT_PROMPT } from "../../ai/prompts/personality.js";
 import {
   ASPECT_RATIOS,
+  LANGUAGES,
   RENDER_MODELS,
   defaultLlmModel,
   defaultVoiceFor,
@@ -41,20 +42,6 @@ const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
  * bytes from us. Doing it the other way round - register, then upload - is the
  * obvious sequence and does not work.
  */
-/**
- * Offered languages. Kept server-side so the list cannot drift from what the
- * speech models are actually configured for.
- */
-const LANGUAGES = [
-  { code: "en", label: "English" },
-  { code: "hi", label: "Hindi" },
-  { code: "es", label: "Spanish" },
-  { code: "fr", label: "French" },
-  { code: "de", label: "German" },
-  { code: "pt", label: "Portuguese" },
-  { code: "ja", label: "Japanese" },
-];
-
 /**
  * Behaviour is stored as a Persona rather than on the Avatar.
  *
