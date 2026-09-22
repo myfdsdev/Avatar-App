@@ -14,6 +14,7 @@ import authRoutes from "./modules/auth/auth.routes.js";
 import analyticsRoutes from "./modules/analytics/analytics.routes.js";
 import conversationRoutes from "./modules/conversations/conversation.routes.js";
 import linkRoutes from "./modules/links/link.routes.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
 import { authenticate, requireAuth } from "./middleware/auth.js";
 import { getStorage } from "./integrations/storage/registry.js";
 
@@ -61,6 +62,8 @@ export function createApp() {
   app.use("/api/studio", requireAuth, studioRoutes);
   app.use("/api/analytics", requireAuth, analyticsRoutes);
   app.use("/api/conversations", requireAuth, conversationRoutes);
+  // Platform admin. Signed in to reach it; ADMIN_EMAILS to get past /access.
+  app.use("/api/admin", requireAuth, adminRoutes);
 
   // Share links are used by people without an account. The token in the URL is
   // the credential; see modules/links for what it does and does not allow.

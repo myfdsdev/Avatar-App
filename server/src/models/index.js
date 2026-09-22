@@ -10,4 +10,5 @@ export { Conversation } from "./Conversation.js";
 export { Transcript } from "./Transcript.js";
 export { UsageLedger } from "./UsageLedger.js";
 export { Subscription } from "./Subscription.js";
+export { Plan } from "./Plan.js";
 export { AuditLog } from "./AuditLog.js";

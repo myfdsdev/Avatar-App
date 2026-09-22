@@ -41,7 +41,7 @@ export default function AvatarChat({ avatar }) {
       </div>
 
       {error && (
-        <p className="mt-5 max-w-md rounded border border-red/40 bg-red/10 px-4 py-3 text-ui text-red">{error}</p>
+        <p className="mt-5 max-w-md rounded border border-red-line bg-red-dim px-4 py-3 text-ui text-red">{error}</p>
       )}
       {!avatar.callable && (
         <p className="mt-5 text-ui text-text-faint">

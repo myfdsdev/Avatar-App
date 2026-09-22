@@ -27,7 +27,7 @@ export default function AvatarList() {
       {isLoading && <p className="text-text-muted">Loading</p>}
 
       {error && (
-        <Card className="border-red/40">
+        <Card className="border-red-line">
           <p className="text-ui text-red">{error.message}</p>
         </Card>
       )}

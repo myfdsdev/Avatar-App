@@ -67,8 +67,17 @@ async function request(path, options = {}) {
   const payload = text ? JSON.parse(text) : null;
 
   if (!res.ok) {
+    // A blocked account is signed out on the spot rather than left on pages
+    // where every request fails. Only mid-session: on the sign-in form the
+    // message is simply shown.
+    if (payload?.error?.code === "account_blocked" && useAuth.getState().accessToken) {
+      useAuth.getState().clear();
+      window.location.assign("/login?blocked=1");
+    }
+
     const error = new Error(payload?.error?.message || `Request failed (${res.status})`);
     error.status = res.status;
+    error.code = payload?.error?.code;
     error.details = payload?.error?.details;
     throw error;
   }

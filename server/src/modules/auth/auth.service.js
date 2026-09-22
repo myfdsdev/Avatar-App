@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { Subscription, User, Workspace } from "../../models/index.js";
+import { Plan, Subscription, User, Workspace } from "../../models/index.js";
+import { accountBlocked } from "./blocked.js";
 import { env } from "../../config/env.js";
 
 const ROUNDS = 12;
@@ -43,7 +44,14 @@ export const authService = {
     user.workspaceId = workspace._id;
     await user.save();
 
-    await Subscription.create({ workspaceId: workspace._id, plan: "free", status: "active" });
+    // New accounts start on the admin's default plan when there is one.
+    const plan = await Plan.findOne({ isDefault: true, active: true }).lean();
+    await Subscription.create({
+      workspaceId: workspace._id,
+      plan: plan?.key || "free",
+      ...(plan && { planId: plan._id, assignedAt: new Date() }),
+      status: "active",
+    });
 
     return { user: publicUser(user), workspace, ...issueTokens(user) };
   },
@@ -58,6 +66,9 @@ export const authService = {
     const ok = await bcrypt.compare(password, hash);
 
     if (!user || !ok) throw unauthorized("Incorrect email or password");
+    // Only after the password checks out, so this cannot be used to learn
+    // which addresses are registered.
+    if (user.blockedAt) throw accountBlocked();
 
     user.lastLoginAt = new Date();
     await user.save();
@@ -75,6 +86,7 @@ export const authService = {
 
     const user = await User.findById(claims.sub);
     if (!user) throw unauthorized("Invalid refresh token");
+    if (user.blockedAt) throw accountBlocked();
 
     // A version mismatch means every token issued before a revoke is dead.
     if ((user.tokenVersion || 0) !== claims.ver) {

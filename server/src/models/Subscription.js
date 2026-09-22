@@ -10,7 +10,11 @@ const subscriptionSchema = new mongoose.Schema(
     },
     stripeCustomerId: { type: String, index: true },
     stripeSubId: { type: String, index: true },
+    // The plan's key, kept for display; `planId` is what the limits come from.
     plan: { type: String, default: "free" },
+    planId: { type: mongoose.Schema.Types.ObjectId, ref: "Plan", index: true },
+    assignedAt: Date,
+    assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     status: {
       type: String,
       enum: ["active", "trialing", "past_due", "canceled", "incomplete"],

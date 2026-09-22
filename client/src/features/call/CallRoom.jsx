@@ -73,7 +73,7 @@ function PreJoin({ avatar, onStart, starting, error, onBack }) {
       </Card>
 
       {error && (
-        <p className="mt-4 rounded border border-red/40 bg-red/10 px-4 py-3 text-ui text-red">
+        <p className="mt-4 rounded border border-red-line bg-red-dim px-4 py-3 text-ui text-red">
           {error}
         </p>
       )}

@@ -1,4 +1,5 @@
-import { Workspace } from "../models/index.js";
+import { User, Workspace } from "../models/index.js";
+import { accountBlocked } from "../modules/auth/blocked.js";
 
 /**
  * Populates req.workspace from the authenticated token.
@@ -17,7 +18,14 @@ export async function resolveWorkspace(req, res, next) {
       throw err;
     }
 
-    req.workspace = await Workspace.findById(req.auth.workspaceId);
+    // Checked per request, not only at sign-in, so a block takes effect at once
+    // rather than when the access token happens to expire.
+    const [workspace, blocked] = await Promise.all([
+      Workspace.findById(req.auth.workspaceId),
+      User.exists({ _id: req.auth.userId, blockedAt: { $ne: null } }),
+    ]);
+    if (blocked) throw accountBlocked();
+    req.workspace = workspace;
 
     if (!req.workspace) {
       const err = new Error("Workspace no longer exists");

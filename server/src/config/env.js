@@ -35,6 +35,13 @@ export const env = {
   port: Number(optional("PORT", "4000")),
   clientOrigin: optional("CLIENT_ORIGIN", "http://localhost:5173"),
 
+  // Platform admins - the people who can open /admin and see every user.
+  // Configured here rather than stored on the user, so no API call can grant it.
+  adminEmails: optional("ADMIN_EMAILS", "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+
   mongoUri: optional("MONGO_URI", "mongodb://localhost:27017/avatar_app"),
   redisUrl: optional("REDIS_URL", "redis://localhost:6379"),
 

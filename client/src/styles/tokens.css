@@ -45,6 +45,10 @@
   --orange: #fb923c;
   --teal: #2dd4bf;
   --red: #ef4444;
+  /* Opacity modifiers (bg-red/10) do nothing on var() colours, so the
+     translucent reds are tokens of their own, like pink-dim and green-dim. */
+  --red-dim: rgba(239, 68, 68, 0.12);
+  --red-line: rgba(239, 68, 68, 0.4);
 
   /* ---- shape ----
      Rounded throughout. 14px is the workhorse; cards and panels go larger. */

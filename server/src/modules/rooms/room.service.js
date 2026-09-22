@@ -90,7 +90,7 @@ export const roomService = {
     return { conversationId: conversation.id, ...connection };
   },
 
-  async endCall({ workspace, conversationId }) {
+  async endCall({ workspace, conversationId, endReason = "hung up" }) {
     const conversation = await Conversation.findOne({
       _id: conversationId,
       workspaceId: workspace._id,
@@ -122,9 +122,7 @@ export const roomService = {
       }
     }
 
-    const { conversation: ended, entry } = await this.finish(conversation._id, {
-      endReason: "hung up",
-    });
+    const { conversation: ended, entry } = await this.finish(conversation._id, { endReason });
 
     return {
       conversationId: ended.id,

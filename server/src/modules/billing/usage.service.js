@@ -1,4 +1,4 @@
-import { Conversation, Subscription, UsageLedger } from "../../models/index.js";
+import { Avatar, Conversation, Plan, Subscription, UsageLedger } from "../../models/index.js";
 import { CAPABILITIES } from "../../avatar/capabilities.js";
 import { env } from "../../config/env.js";
 import { logger } from "../../config/logger.js";
@@ -82,7 +82,8 @@ export const usageService = {
    * afterwards.
    */
   async assertCanStartCall(workspace) {
-    const limit = workspace.settings?.concurrencyLimit ?? 3;
+    const limits = await this.limitsFor(workspace);
+    const limit = limits.concurrencyLimit;
     const active = await this.activeCallCount(workspace._id);
 
     if (active >= limit) {
@@ -93,11 +94,10 @@ export const usageService = {
       throw err;
     }
 
-    const subscription = await Subscription.findOne({ workspaceId: workspace._id }).lean();
-    if (!subscription || subscription.overageEnabled) return;
+    if (limits.overageEnabled) return;
 
     const used = await this.minutesThisPeriod(workspace._id);
-    const included = subscription.includedMinutes ?? 0;
+    const included = limits.includedMinutes;
 
     // Zero included minutes means the plan is not metered this way (the free
     // tier during development), not that every call should be refused.
@@ -105,6 +105,54 @@ export const usageService = {
       const err = new Error(
         `Monthly allowance used (${used.toFixed(1)} of ${included} minutes). ` +
           `Enable overage in billing to keep going.`,
+      );
+      err.statusCode = 402;
+      throw err;
+    }
+  },
+
+  /**
+   * The limits a workspace runs under.
+   *
+   * With an assigned plan they come from the plan, read now rather than copied
+   * at assignment, so editing a plan changes it for everyone on it. Without
+   * one they are the older per-subscription and per-workspace fields.
+   */
+  async limitsFor(workspace) {
+    const subscription = await Subscription.findOne({ workspaceId: workspace._id }).lean();
+    const plan = subscription?.planId ? await Plan.findById(subscription.planId).lean() : null;
+
+    if (plan) {
+      return {
+        planId: plan._id,
+        planName: plan.name,
+        includedMinutes: plan.includedMinutes ?? 0,
+        overageEnabled: Boolean(plan.overageEnabled),
+        concurrencyLimit: plan.concurrencyLimit ?? 3,
+        maxAvatars: plan.maxAvatars ?? 0,
+      };
+    }
+    return {
+      planId: null,
+      planName: subscription?.plan || null,
+      includedMinutes: subscription?.includedMinutes ?? 0,
+      // No subscription at all has always meant "not metered".
+      overageEnabled: subscription ? Boolean(subscription.overageEnabled) : true,
+      concurrencyLimit: workspace.settings?.concurrencyLimit ?? 3,
+      maxAvatars: 0,
+    };
+  },
+
+  /** Refuses a new avatar once the plan's avatar count is reached (0 = no cap). */
+  async assertCanCreateAvatar(workspace) {
+    const { maxAvatars, planName } = await this.limitsFor(workspace);
+    if (!maxAvatars) return;
+
+    const count = await Avatar.countDocuments({ workspaceId: workspace._id });
+    if (count >= maxAvatars) {
+      const err = new Error(
+        `Your ${planName || "current"} plan allows ${maxAvatars} avatar${maxAvatars === 1 ? "" : "s"}. ` +
+          `Delete one or ask for a bigger plan.`,
       );
       err.statusCode = 402;
       throw err;
@@ -136,6 +184,8 @@ export const usageService = {
     ]);
 
     const subscription = await Subscription.findOne({ workspaceId }).lean();
+    // Only the displayed fields are read, so the workspace's own settings are not needed.
+    const limits = subscription ? await this.limitsFor({ _id: workspaceId }) : null;
 
     // Derived from the per-provider rows rather than a second aggregate, so the
     // two can never disagree.
@@ -158,11 +208,12 @@ export const usageService = {
         calls: p.calls,
       })),
       activeCalls: await this.activeCallCount(workspaceId),
-      plan: subscription
+      plan: limits
         ? {
-            name: subscription.plan,
-            includedMinutes: subscription.includedMinutes,
-            overageEnabled: subscription.overageEnabled,
+            name: limits.planName,
+            includedMinutes: limits.includedMinutes,
+            overageEnabled: limits.overageEnabled,
+            maxAvatars: limits.maxAvatars,
           }
         : null,
       maxCallSeconds: env.maxCallSeconds,

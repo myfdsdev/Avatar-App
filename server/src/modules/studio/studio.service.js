@@ -15,6 +15,7 @@ import {
   requiresPublicUrl,
 } from "../../avatar/capabilities.js";
 import { trainingService } from "../../avatar/training.service.js";
+import { usageService } from "../billing/usage.service.js";
 import { env } from "../../config/env.js";
 import { logger } from "../../config/logger.js";
 import { DEFAULT_PROMPT } from "../../ai/prompts/personality.js";
@@ -103,6 +104,7 @@ const stockKey = (providerId, providerAvatarId) =>
 export const studioService = {
   async createFromPhoto({ workspace, file, name, providerId, gender, behaviour, userId }) {
     assertUsableImage(file);
+    await usageService.assertCanCreateAvatar(workspace);
 
     const storage = getStorage();
     const provider = selectProvider({ sourceType: "photo", preferred: providerId });
@@ -170,6 +172,7 @@ export const studioService = {
    */
   async createFromVideo({ workspace, file, name, providerId, gender, behaviour, userId }) {
     assertUsableVideo(file);
+    await usageService.assertCanCreateAvatar(workspace);
 
     const storage = getStorage();
     const provider = selectProvider({ sourceType: "video", preferred: providerId });
@@ -297,6 +300,7 @@ export const studioService = {
    * it is not ours to remove.
    */
   async createFromStock({ workspace, providerId, providerAvatarId, name, gender, behaviour, userId }) {
+    await usageService.assertCanCreateAvatar(workspace);
     if (!hasStockAvatars(providerId)) {
       throw unprocessable(`Provider "${providerId}" has no ready-made avatars`);
     }

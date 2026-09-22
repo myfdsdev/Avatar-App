@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { Avatar, Conversation, Workspace } from "../../models/index.js";
+import { Avatar, Conversation, User, Workspace } from "../../models/index.js";
 import { env } from "../../config/env.js";
 import { roomService } from "../rooms/room.service.js";
 import { isCallable } from "../avatars/avatar.service.js";
@@ -62,6 +62,14 @@ export const linkService = {
 
     const workspace = await Workspace.findById(avatar.workspaceId);
     if (!workspace) throw linkNotActive();
+
+    // A blocked owner's avatars stop taking calls - including from links
+    // already handed out. The guest gets the same answer as any unavailable avatar.
+    if (await User.exists({ _id: workspace.ownerId, blockedAt: { $ne: null } })) {
+      const err = new Error("This avatar is not available right now. Try again later.");
+      err.statusCode = 409;
+      throw err;
+    }
 
     try {
       const connection = await roomService.startCall({

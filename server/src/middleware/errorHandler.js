@@ -32,6 +32,9 @@ export function errorHandler(err, req, res, next) {
     error: {
       message: err.message || "Internal server error",
       name: err.name,
+      // A machine-readable reason the client can act on, e.g. "account_blocked".
+      // Only strings: driver errors carry numeric codes that mean nothing here.
+      ...(typeof err.code === "string" ? { code: err.code } : {}),
       ...(err.details ? { details: err.details } : {}),
       // A 500 can carry internals; never leak them in production.
       ...(!isProd && status >= 500 ? { stack: err.stack } : {}),

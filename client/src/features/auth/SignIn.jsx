@@ -52,6 +52,12 @@ export default function SignIn({ mode = "login" }) {
           : "Welcome back."}
       </p>
 
+      {new URLSearchParams(location.search).has("blocked") && (
+        <p className="mt-6 rounded border border-red-line bg-red-dim px-4 py-3 text-ui text-red">
+          This account has been blocked. Contact support if you think this is a mistake.
+        </p>
+      )}
+
       <Card className="mt-8">
         <form
           onSubmit={(e) => {
@@ -82,7 +88,7 @@ export default function SignIn({ mode = "login" }) {
           />
 
           {submit.isError && (
-            <p className="mt-5 rounded border border-red/40 bg-red/10 px-4 py-3 text-ui text-red">
+            <p className="mt-5 rounded border border-red-line bg-red-dim px-4 py-3 text-ui text-red">
               {submit.error.message}
             </p>
           )}

@@ -33,6 +33,8 @@ export default {
         orange: "var(--orange)",
         teal: "var(--teal)",
         red: "var(--red)",
+        "red-dim": "var(--red-dim)",
+        "red-line": "var(--red-line)",
       },
       fontFamily: {
         sans: "var(--font-sans)",

@@ -11,6 +11,12 @@ const userSchema = new mongoose.Schema(
     // Bumping this invalidates every outstanding refresh token at once, which
     // is how "sign out everywhere" works without a revocation list.
     tokenVersion: { type: Number, default: 0 },
+
+    // Set by a platform admin. A blocked user cannot sign in, refresh, call
+    // the API, or have their avatars answer share links.
+    blockedAt: Date,
+    blockedReason: { type: String, trim: true },
+    blockedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true },
 );

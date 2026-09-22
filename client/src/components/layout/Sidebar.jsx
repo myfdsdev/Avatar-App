@@ -4,6 +4,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { authApi } from "@/services/auth.api";
 import { useAuth } from "@/store/auth.store";
 import { useUi } from "@/store/ui.store";
+import { useIsAdmin } from "@/features/admin/useIsAdmin";
 
 /**
  * Left navigation, grouped by what you are doing.
@@ -37,6 +38,15 @@ const SECTIONS = [
   },
 ];
 
+// Shown only to platform admins (ADMIN_EMAILS on the server).
+const ADMIN_SECTION = {
+  title: "Admin",
+  items: [
+    { to: "/admin", label: "Overview", icon: ShieldIcon, end: true },
+    { to: "/admin/plans", label: "Plans", icon: TagIcon },
+  ],
+};
+
 const itemClass = (collapsed) =>
   clsx(
     "mb-0.5 flex w-full items-center gap-3 rounded py-2 text-ui transition-colors",
@@ -45,6 +55,8 @@ const itemClass = (collapsed) =>
 
 export default function Sidebar() {
   const collapsed = useUi((s) => s.sidebarCollapsed);
+  const { isAdmin } = useIsAdmin();
+  const sections = isAdmin ? [...SECTIONS, ADMIN_SECTION] : SECTIONS;
   const toggle = useUi((s) => s.toggleSidebar);
 
   return (
@@ -78,7 +90,7 @@ export default function Sidebar() {
       </div>
 
       <nav className={clsx("flex-1 overflow-y-auto pb-4 pt-3", collapsed ? "px-2" : "px-3")}>
-        {SECTIONS.map((section, i) => (
+        {sections.map((section, i) => (
           <div key={section.title} className={clsx(i > 0 && (collapsed ? "mt-3" : "mt-4"))}>
             {collapsed ? (
               i > 0 && <div className="mx-2 mb-3 border-t border-border" aria-hidden />
@@ -243,6 +255,24 @@ function HomeIcon() {
     <svg {...stroke}>
       <path d="M2 6.5 8 2l6 4.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6.5Z" />
       <path d="M6 14V9h4v5" />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg {...stroke}>
+      <path d="M8 1.8 13 3.6v4c0 3-2.1 5.4-5 6.6-2.9-1.2-5-3.6-5-6.6v-4z" />
+      <path d="M5.8 8l1.6 1.6L10.4 6.5" />
+    </svg>
+  );
+}
+
+function TagIcon() {
+  return (
+    <svg {...stroke}>
+      <path d="M2.5 3.5v4l6 6 5-5-6-6h-4a1 1 0 0 0-1 1z" />
+      <circle cx="5.5" cy="5.5" r="1" />
     </svg>
   );
 }

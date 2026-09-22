@@ -12,6 +12,9 @@ import Usage from "@/features/analytics/Usage";
 import ConversationList from "@/features/conversations/ConversationList";
 import ConversationDetail from "@/features/conversations/ConversationDetail";
 import DesignPreview from "@/features/_design/DesignPreview";
+import AdminOverview from "@/features/admin/AdminOverview";
+import AdminUser from "@/features/admin/AdminUser";
+import AdminPlans from "@/features/admin/AdminPlans";
 
 /**
  * Signed-in pages live inside the shell; sign-in, the avatar creator and the
@@ -49,6 +52,11 @@ export default function AppRouter() {
       <Route path="/analytics" element={app(<Usage />)} />
       <Route path="/conversations" element={app(<ConversationList />)} />
       <Route path="/conversations/:id" element={app(<ConversationDetail />)} />
+
+      {/* Platform admins only; the pages check, and the API checks again. */}
+      <Route path="/admin" element={app(<AdminOverview />)} />
+      <Route path="/admin/users/:id" element={app(<AdminUser />)} />
+      <Route path="/admin/plans" element={app(<AdminPlans />)} />
 
       <Route
         path="/call/:avatarId"

@@ -21,3 +21,4 @@ process.env.ANTHROPIC_API_KEY = "";
 // Pinned rather than inherited, so a developer's own .env cannot change what
 // the suite exercises.
 process.env.LEMONSLICE_API_KEY = "";
+process.env.ADMIN_EMAILS = "admin@example.com";

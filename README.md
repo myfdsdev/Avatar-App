@@ -51,6 +51,7 @@ credential is obvious before anything else is started.
 Client on http://localhost:5173, API on http://localhost:4000.
 
 - **http://localhost:5173/avatars** - avatar library, start a call
+- **http://localhost:5173/admin** - platform admin: monitor every user, block accounts, create plans and assign them. Only for the emails in `ADMIN_EMAILS` (server `.env`)
 - **http://localhost:5173/_design** - design system reference
 
 ### Fully local alternative
