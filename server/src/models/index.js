@@ -4,6 +4,7 @@ export { Avatar } from "./Avatar.js";
 export { AvatarAsset } from "./AvatarAsset.js";
 export { TrainingJob } from "./TrainingJob.js";
 export { Persona } from "./Persona.js";
+export { KnowledgeDocument } from "./KnowledgeDocument.js";
 export { Voice } from "./Voice.js";
 export { Conversation } from "./Conversation.js";
 export { Transcript } from "./Transcript.js";

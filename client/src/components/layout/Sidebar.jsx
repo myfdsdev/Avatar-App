@@ -23,10 +23,6 @@ const SECTIONS = [
     items: [{ to: "/", label: "Home", icon: HomeIcon, end: true }],
   },
   {
-    title: "Create",
-    items: [{ to: "/studio", label: "Create avatar", icon: PlusIcon }],
-  },
-  {
     title: "Assets",
     items: [
       { to: "/avatars", label: "Avatars", icon: AvatarIcon },
@@ -273,14 +269,6 @@ function ChartIcon() {
     <svg {...stroke}>
       <path d="M2 13h12" />
       <path d="M4.5 13V8M8 13V4m3.5 9V9.5" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg {...stroke}>
-      <path d="M8 3v10M3 8h10" />
     </svg>
   );
 }

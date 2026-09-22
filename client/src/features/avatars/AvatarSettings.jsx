@@ -1,6 +1,7 @@
 import { useState } from "react";
 import clsx from "clsx";
 import MediaPreview from "@/components/media/MediaPreview";
+import KnowledgeBase from "./KnowledgeBase";
 
 /**
  * An avatar's settings, laid out like LemonSlice's: a section label with a
@@ -176,7 +177,7 @@ export default function AvatarSettings({ avatar, options, onChange }) {
             description={
               chosenLlm && !chosenLlm.available
                 ? `${chosenLlm.unavailableReason}. Calls use ${options.defaultLlmModel} until then.`
-                : undefined
+                : "LLM choice will impact agent's response quality and latency."
             }
           >
             <Select value={llm} onChange={(llmModel) => setPersona({ llmModel }, { now: true })}>
@@ -188,6 +189,7 @@ export default function AvatarSettings({ avatar, options, onChange }) {
               ))}
             </Select>
           </Row>
+          <KnowledgeBase avatarId={avatar._id} />
         </Card>
       </section>
 

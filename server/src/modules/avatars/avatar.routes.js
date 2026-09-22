@@ -1,8 +1,16 @@
 import { Router } from "express";
+import multer from "multer";
+import { MAX_FILE_BYTES } from "../../ai/knowledge.js";
 import { avatarController } from "./avatar.controller.js";
 import { avatarValidation } from "./avatar.validation.js";
 import { validate } from "../../middleware/validate.js";
 import { resolveWorkspace } from "../../middleware/workspace.js";
+
+// Held in memory: only the extracted text is kept, never the file.
+const uploadDocument = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_BYTES, files: 1 },
+});
 
 const router = Router();
 
@@ -12,6 +20,20 @@ router.get("/", avatarController.list);
 router.get("/:id", validate(avatarValidation.byId), avatarController.get);
 router.patch("/:id", validate(avatarValidation.update), avatarController.update);
 router.delete("/:id", validate(avatarValidation.byId), avatarController.remove);
+
+// Knowledge base: documents the avatar can draw on during calls.
+router.get("/:id/documents", validate(avatarValidation.byId), avatarController.listDocuments);
+router.post(
+  "/:id/documents",
+  validate(avatarValidation.byId),
+  uploadDocument.single("file"),
+  avatarController.addDocument,
+);
+router.delete(
+  "/:id/documents/:docId",
+  validate(avatarValidation.document),
+  avatarController.removeDocument,
+);
 
 // The public link. Managing it needs an account; using it does not - see
 // modules/links.

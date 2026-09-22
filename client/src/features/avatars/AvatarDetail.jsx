@@ -1,22 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { avatarApi } from "@/services/avatar.api";
 import { studioApi } from "@/services/studio.api";
-import Modal from "@/components/common/Modal";
-import Button from "@/components/common/Button";
 import AvatarSettings from "./AvatarSettings";
 import AvatarChat from "./AvatarChat";
-import ShareDialog from "./ShareDialog";
+import AvatarMenu from "./AvatarMenu";
 import { useAutosave } from "./useAutosave";
 
 /**
  * One avatar: talk to it, or change how it looks, sounds and behaves.
  *
  * Laid out like LemonSlice's agent page - a rounded panel with the name and an
- * edit pencil on the left, Chat / Settings on the right, and a menu beside
- * them. Creating an avatar lands here, on Settings.
+ * edit pencil on the left, Chat / Settings on the right, and the avatar's ⋯
+ * menu (AvatarMenu) beside them. Creating an avatar lands here, on Settings.
  *
  * Settings save themselves as they change (see useAutosave), so there is no
  * Save button; the header says when a save is in flight or has failed.
@@ -110,7 +108,12 @@ function Header({ avatar, tab, onTab, autosave }) {
             </button>
           ))}
         </div>
-        <MoreMenu avatar={avatar} />
+        <AvatarMenu
+          avatar={avatar}
+          vertical
+          onDeleted={() => navigate("/avatars")}
+          buttonClassName="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-bg text-text-muted transition-colors hover:text-text"
+        />
       </div>
     </header>
   );
@@ -191,104 +194,6 @@ function SaveStatus({ status, error }) {
   );
 }
 
-/** Share and delete - the actions that are about the avatar rather than its settings. */
-function MoreMenu({ avatar }) {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [sharing, setSharing] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const menu = useRef(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e) => !menu.current?.contains(e.target) && setOpen(false);
-    const escape = (e) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", escape);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", escape);
-    };
-  }, [open]);
-
-  const remove = useMutation({
-    mutationFn: () => avatarApi.remove(avatar._id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["avatars"] });
-      navigate("/avatars");
-    },
-  });
-
-  const item =
-    "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-ui transition-colors hover:bg-surface-hover";
-
-  return (
-    <div ref={menu} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="More actions"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-bg text-text-muted transition-colors hover:text-text"
-      >
-        <DotsIcon />
-      </button>
-
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-30 mt-2 w-48 rounded border border-border-strong bg-surface-2 p-1 shadow-lg"
-        >
-          <button
-            type="button"
-            role="menuitem"
-            className={item}
-            onClick={() => {
-              setOpen(false);
-              setSharing(true);
-            }}
-          >
-            Share link
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className={clsx(item, "text-red")}
-            onClick={() => {
-              setOpen(false);
-              setConfirming(true);
-            }}
-          >
-            Delete avatar
-          </button>
-        </div>
-      )}
-
-      {sharing && <ShareDialog avatar={avatar} onClose={() => setSharing(false)} />}
-
-      <Modal
-        open={confirming}
-        onClose={() => !remove.isPending && setConfirming(false)}
-        title={`Delete ${avatar.name}?`}
-        description="Its settings and share link go with it. Past conversations stay in your history."
-        footer={
-          <>
-            {remove.isError && <span className="mr-auto text-ui text-red">{remove.error.message}</span>}
-            <Button variant="ghost" onClick={() => setConfirming(false)} disabled={remove.isPending}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={() => remove.mutate()} disabled={remove.isPending}>
-              {remove.isPending ? "Deleting…" : "Delete"}
-            </Button>
-          </>
-        }
-      />
-    </div>
-  );
-}
-
 const stroke = {
   width: 16,
   height: 16,
@@ -335,12 +240,3 @@ function SlidersIcon() {
   );
 }
 
-function DotsIcon() {
-  return (
-    <svg {...stroke} fill="currentColor" stroke="none">
-      <circle cx="8" cy="3.5" r="1.2" />
-      <circle cx="8" cy="8" r="1.2" />
-      <circle cx="8" cy="12.5" r="1.2" />
-    </svg>
-  );
-}

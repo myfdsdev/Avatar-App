@@ -7,6 +7,15 @@ export const avatarApi = {
   update: (id, patch) => api.patch(`/avatars/${id}`, patch).then((r) => r.avatar),
   remove: (id) => api.del(`/avatars/${id}`),
 
+  /** Knowledge base. Listings carry name and size, never the extracted text. */
+  documents: (id) => api.get(`/avatars/${id}/documents`).then((r) => r.documents),
+  addDocument: (id, file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.upload(`/avatars/${id}/documents`, form).then((r) => r.document);
+  },
+  removeDocument: (id, docId) => api.del(`/avatars/${id}/documents/${docId}`),
+
   /** Public share link: `{ enabled, token }`. */
   getShare: (id) => api.get(`/avatars/${id}/share`).then((r) => r.share),
   setShare: (id, enabled) => api.put(`/avatars/${id}/share`, { enabled }).then((r) => r.share),

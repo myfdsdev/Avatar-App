@@ -11,6 +11,8 @@ import { getRenderer } from "./renderers/registry.js";
 import { buildPipelineConfig, logPipelineMode } from "./pipeline.js";
 import { createTranscriptRecorder } from "./transcript.recorder.js";
 import { RECOMMENDED_PROMPT } from "../ai/prompts/personality.js";
+import { knowledgePrompt } from "../ai/knowledge.js";
+import { knowledgeService } from "../modules/avatars/knowledge.service.js";
 
 /**
  * The realtime worker. One long-lived process, separate from the API, that
@@ -165,9 +167,12 @@ async function resolveJob(ctx) {
     { room: roomName, avatar: avatar.name, provider: avatar.providerId },
     "job resolved",
   );
+  // Read per call, so a document added a minute ago is already known.
+  const documents = await knowledgeService.forCall(avatar._id);
+
   return {
     conversation,
-    avatar: { ...avatar, persona: avatar.personaId, voice: avatar.voiceId },
+    avatar: { ...avatar, persona: avatar.personaId, voice: avatar.voiceId, documents },
   };
 }
 
@@ -178,14 +183,19 @@ function instructionsFor(avatar, conversation) {
       `Keep replies to two or three sentences.`;
   // "Default personality" on the settings page: spoken-conversation guidance
   // added after the persona's own brief, never instead of it.
-  const brief = avatar.persona?.useDefaultPrompt ? `${own}\n\n${RECOMMENDED_PROMPT}` : own;
+  const parts = [avatar.persona?.useDefaultPrompt ? `${own}\n\n${RECOMMENDED_PROMPT}` : own];
 
   // Someone arriving by share link typed their name before joining. An
   // interviewer that knows who it is talking to sounds like one.
   const guest = conversation.guest?.name;
-  return guest
-    ? `${brief}\n\nThe person on this call is called ${guest}. Use their name naturally.`
-    : brief;
+  if (guest) parts.push(`The person on this call is called ${guest}. Use their name naturally.`);
+
+  // The knowledge base goes last: reference material, after who the avatar is
+  // and who it is talking to.
+  const knowledge = knowledgePrompt(avatar.documents);
+  if (knowledge) parts.push(knowledge);
+
+  return parts.join("\n\n");
 }
 
 async function markActive(conversation) {

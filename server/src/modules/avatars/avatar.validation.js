@@ -24,6 +24,7 @@ export const avatarValidation = {
       })
       .strict(),
   },
+  document: { params: z.object({ id: objectId, docId: objectId }) },
   setShare: {
     params: z.object({ id: objectId }),
     body: z.object({ enabled: z.boolean() }),

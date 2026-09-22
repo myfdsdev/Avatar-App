@@ -6,6 +6,7 @@ import { trainingService } from "../../avatar/training.service.js";
 import { Persona, TrainingJob } from "../../models/index.js";
 import { logger } from "../../config/logger.js";
 import { DEFAULT_PROMPT } from "../../ai/prompts/personality.js";
+import { knowledgeService } from "./knowledge.service.js";
 
 const notFound = () => {
   const err = new Error("Avatar not found");
@@ -119,6 +120,7 @@ export const avatarService = {
   async remove(workspaceId, id) {
     const deleted = await avatarRepository.deleteById(workspaceId, id);
     if (!deleted) throw notFound();
+    await knowledgeService.removeAllFor(workspaceId, id);
     // The vendor-side avatar is deleted by a queue worker so a slow or failing
     // vendor never blocks the request. Wired up in Phase 2.
     return { id };

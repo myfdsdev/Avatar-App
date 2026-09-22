@@ -1,4 +1,5 @@
 import { avatarService } from "./avatar.service.js";
+import { knowledgeService } from "./knowledge.service.js";
 import { asyncHandler } from "../../middleware/validate.js";
 
 export const avatarController = {
@@ -16,6 +17,24 @@ export const avatarController = {
 
   remove: asyncHandler(async (req, res) => {
     res.json(await avatarService.remove(req.workspace._id, req.params.id));
+  }),
+
+  listDocuments: asyncHandler(async (req, res) => {
+    res.json({ documents: await knowledgeService.list(req.workspace._id, req.params.id) });
+  }),
+
+  addDocument: asyncHandler(async (req, res) => {
+    const document = await knowledgeService.add(
+      req.workspace._id,
+      req.params.id,
+      req.file,
+      req.auth?.userId,
+    );
+    res.status(201).json({ document });
+  }),
+
+  removeDocument: asyncHandler(async (req, res) => {
+    res.json(await knowledgeService.remove(req.workspace._id, req.params.id, req.params.docId));
   }),
 
   getShare: asyncHandler(async (req, res) => {

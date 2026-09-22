@@ -6,6 +6,7 @@ import { avatarApi } from "@/services/avatar.api";
 import { PRESETS } from "@/features/studio/presets";
 import MediaPreview from "@/components/media/MediaPreview";
 import Button from "@/components/common/Button";
+import AvatarCard from "@/features/avatars/AvatarCard";
 
 /**
  * The dashboard: a wide hero banner, a row of templates, then your avatars.
@@ -43,10 +44,7 @@ export default function Home() {
 
       <section className="mt-8 px-6">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="flex items-center gap-2 text-h3 font-semibold">
-            <SparkleIcon />
-            Your avatars
-          </h2>
+          <h2 className="text-h3 font-semibold">My avatars</h2>
           {avatars?.length > 0 && (
             <Link to="/avatars" className="text-ui text-text-muted hover:text-text">
               View all
@@ -70,7 +68,7 @@ export default function Home() {
           <div className="scroll-row mt-5 gap-4 pb-3">
             <NewAvatarCard onCreate={show} />
             {avatars.map((avatar) => (
-              <AvatarTile key={avatar._id} avatar={avatar} />
+              <AvatarCard key={avatar._id} avatar={avatar} className="w-[230px] shrink-0" />
             ))}
           </div>
         )}
@@ -302,19 +300,6 @@ function CardAction({ tone, icon, label, detail }) {
   );
 }
 
-function CardBadge({ tone = "muted", children }) {
-  return (
-    <span
-      className={clsx(
-        "shrink-0 rounded-full bg-black/60 px-2.5 py-0.5 text-label backdrop-blur",
-        tone === "yellow" ? "text-yellow" : "text-white/80",
-      )}
-    >
-      {children}
-    </span>
-  );
-}
-
 function TemplateCard({ preset, onPick }) {
   const art = {
     background: [
@@ -346,40 +331,6 @@ function TemplateCard({ preset, onPick }) {
         }
       />
     </button>
-  );
-}
-
-function AvatarTile({ avatar }) {
-  const badges = (
-    <span className="flex shrink-0 gap-1.5">
-      {avatar.isStub && <CardBadge tone="yellow">Stub</CardBadge>}
-      {!avatar.callable && (
-        <CardBadge>{avatar.status === "training" ? "Training…" : avatar.status}</CardBadge>
-      )}
-    </span>
-  );
-
-  return (
-    <Link to={avatar.callable ? `/call/${avatar._id}` : "/avatars"} className={CARD}>
-      <MediaPreview
-        src={avatar.previewUrl}
-        className="absolute inset-0 h-full w-full transition-transform duration-300 ease-ease group-hover:scale-105"
-      />
-
-      <CardChrome
-        name={avatar.name}
-        badges={badges}
-        overlay={
-          avatar.callable ? (
-            <CardAction tone="green" icon={<CameraGlyph />} label="Start call" />
-          ) : (
-            <span className="text-ui text-white/80">
-              {avatar.unavailableReason || "Not ready to call yet"}
-            </span>
-          )
-        }
-      />
-    </Link>
   );
 }
 
@@ -419,28 +370,10 @@ function PlusGlyph({ size = 16 }) {
   );
 }
 
-function CameraGlyph() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <rect x="2.5" y="6" width="13" height="12" rx="2.5" />
-      <path d="m17 10.2 3.4-2.3a.7.7 0 0 1 1.1.6v7a.7.7 0 0 1-1.1.6L17 13.8Z" />
-    </svg>
-  );
-}
-
 function PlayGlyph() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
       <path d="M4.5 2.8v10.4a.8.8 0 0 0 1.2.7l8.2-5.2a.8.8 0 0 0 0-1.4L5.7 2.1a.8.8 0 0 0-1.2.7Z" />
-    </svg>
-  );
-}
-
-function SparkleIcon() {
-  return (
-    <svg {...line} width="20" height="20" viewBox="0 0 24 24" strokeWidth="1.6" className="text-pink">
-      <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
-      <path d="m6.3 6.3 2.1 2.1M15.6 15.6l2.1 2.1M6.3 17.7l2.1-2.1M15.6 8.4l2.1-2.1" />
     </svg>
   );
 }

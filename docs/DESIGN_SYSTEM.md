@@ -96,11 +96,17 @@ window.
 
 **Dashboard (`Home`)** - a wide hero carousel (a create slide, then one per
 callable avatar), then horizontally scrolling shelves (`.scroll-row`) of 5:7
-cards: Templates, which open the avatar creator pre-filled, and Your avatars.
+cards: Templates, which open the avatar creator pre-filled, and My avatars.
 Shelf cards follow LemonSlice's avatar grid - the picture fills the card, the
 name sits top-left over a shade, no caption underneath, and hovering darkens
 the card and shows one round action (green "Start call", pink "Use
 template").
+
+**`AvatarCard`** - an avatar in "My avatars", on the dashboard shelf and the
+Avatars page alike: name and "Last edited …" top-left, the ⋯ menu (share,
+delete) top-right, and on hover a green Start call in the middle and a
+Settings bar along the bottom. A talking clip plays while hovered. On touch
+screens the controls are always shown.
 
 **`AvatarCreator`** - the only way to create an avatar: a full-window page at
 `/studio`, outside the shell. The face fills the middle at full height with a
