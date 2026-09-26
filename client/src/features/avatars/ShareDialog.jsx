@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { avatarApi, shareUrl } from "@/services/avatar.api";
+import { avatarApi, embedUrl, shareUrl, widgetScriptUrl } from "@/services/avatar.api";
 import Modal from "@/components/common/Modal";
 import Button from "@/components/common/Button";
 
@@ -113,6 +113,8 @@ export default function ShareDialog({ avatar, onClose }) {
             </div>
           )}
 
+          {share?.enabled && share.token && <EmbedCode token={share.token} name={avatar.name} />}
+
           <ul className="space-y-1.5 text-ui text-text-muted">
             <li>· They type their name, then talk - the avatar greets them by it.</li>
             <li>· Every call shows up in Conversations with their name and the full transcript.</li>
@@ -179,5 +181,98 @@ function Switch({ checked, disabled, onChange }) {
         )}
       />
     </button>
+  );
+}
+
+/**
+ * Code for putting the avatar on another website. Both forms run on the same
+ * public link, so turning the link off or resetting it disables every embed
+ * too - and the code keeps working unchanged for as long as the link does.
+ */
+const EMBED_KINDS = [
+  { id: "widget", label: "Chat widget", hint: "A button in the corner of every page; opens the avatar in a panel. Paste before </body>." },
+  { id: "iframe", label: "Inline", hint: "The avatar right inside your page, wherever you paste it." },
+];
+
+function EmbedCode({ token, name }) {
+  const [kind, setKind] = useState("widget");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return undefined;
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  const code =
+    kind === "widget"
+      ? `<script src="${widgetScriptUrl()}" data-token="${token}" async></script>`
+      : `<iframe src="${embedUrl(token)}" title="${name.replace(/"/g, "&quot;")}" width="400" height="640" allow="microphone; camera; autoplay" style="border:0;border-radius:16px;max-width:100%"></iframe>`;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+    } catch {
+      document.getElementById("embed-code")?.select();
+    }
+  };
+
+  const hint = EMBED_KINDS.find((k) => k.id === kind).hint;
+
+  return (
+    <div className="border-t border-border pt-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="font-medium">Embed on your website</span>
+        <div className="flex gap-1 rounded border border-border-strong bg-bg p-1">
+          {EMBED_KINDS.map((k) => (
+            <button
+              key={k.id}
+              type="button"
+              aria-pressed={kind === k.id}
+              onClick={() => {
+                setKind(k.id);
+                setCopied(false);
+              }}
+              className={clsx(
+                "h-7 rounded-sm px-3 text-ui font-medium transition-colors",
+                kind === k.id ? "bg-surface-3 text-text" : "text-text-muted hover:text-text",
+              )}
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="mt-1.5 text-ui text-text-muted">{hint}</p>
+      <textarea
+        id="embed-code"
+        readOnly
+        value={code}
+        rows={kind === "widget" ? 2 : 4}
+        onFocus={(e) => e.target.select()}
+        className="mt-3 w-full resize-none rounded border border-border bg-bg px-3 py-2 font-mono text-label leading-relaxed text-text outline-none focus:border-border-strong"
+      />
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <a
+          href={embedUrl(token)}
+          target="_blank"
+          rel="noreferrer"
+          className="text-ui text-text-muted hover:text-text"
+        >
+          Preview ↗
+        </a>
+        <Button size="sm" onClick={copy}>
+          {copied ? "Copied" : "Copy code"}
+        </Button>
+      </div>
+      {kind === "widget" && (
+        <p className="mt-3 text-label leading-relaxed text-text-faint">
+          Optional: <code className="font-mono">data-name</code> / <code className="font-mono">data-email</code> pass
+          your signed-in visitor, <code className="font-mono">data-position=&quot;left&quot;</code> moves the button,
+          and <code className="font-mono">window.AvatarApp.open()</code> opens it from your own code.
+        </p>
+      )}
+    </div>
   );
 }

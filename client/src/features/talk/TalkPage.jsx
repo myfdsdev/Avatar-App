@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { linkApi } from "@/services/link.api";
 import MediaPreview from "@/components/media/MediaPreview";
@@ -16,6 +16,17 @@ import CallSurface from "@/features/call/CallSurface";
  * being recorded by someone they may not know, and should hear that first.
  */
 const NAME_KEY = "avatar-app.guest";
+// Embedded on someone else's site, a visitor who skips the name still gets a call.
+const EMBED_GUEST = "Website visitor";
+
+/**
+ * Tells the page hosting an embed what happened, so a developer can react
+ * (open a chat, log an event). Nothing sensitive goes out - only the event.
+ */
+function notifyHost(type) {
+  if (window.parent === window) return;
+  window.parent.postMessage({ source: "avatar-app", type }, "*");
+}
 
 function rememberedGuest() {
   try {
@@ -25,8 +36,14 @@ function rememberedGuest() {
   }
 }
 
-export default function TalkPage() {
+/**
+ * `embedded` is the same flow inside an iframe on another site (/embed/:token):
+ * no page chrome, the name is optional, and `?name=` / `?email=` let the host
+ * page pass its signed-in visitor so they are not asked at all.
+ */
+export default function TalkPage({ embedded = false }) {
   const { token } = useParams();
+  const [params] = useSearchParams();
   const { data, isLoading, error } = useQuery({
     queryKey: ["link", token],
     queryFn: () => linkApi.describe(token),
@@ -34,7 +51,13 @@ export default function TalkPage() {
   });
 
   const [phase, setPhase] = useState("form"); // form | call | ended
-  const [guest, setGuest] = useState(rememberedGuest);
+  const [guest, setGuest] = useState(() => {
+    const remembered = rememberedGuest();
+    return {
+      name: params.get("name")?.slice(0, 80) || remembered.name,
+      email: params.get("email")?.slice(0, 200) || remembered.email,
+    };
+  });
   const [call, setCall] = useState(null);
   const [starting, setStarting] = useState(false);
   const [ending, setEnding] = useState(false);
@@ -47,7 +70,8 @@ export default function TalkPage() {
     setStarting(true);
     setStartError(null);
     try {
-      const connection = await linkApi.start(token, guest);
+      const who = embedded && !guest.name.trim() ? { ...guest, name: EMBED_GUEST } : guest;
+      const connection = await linkApi.start(token, who);
       try {
         localStorage.setItem(NAME_KEY, JSON.stringify(guest));
       } catch {
@@ -56,6 +80,7 @@ export default function TalkPage() {
       finished.current = false;
       setCall(connection);
       setPhase("call");
+      notifyHost("call-started");
     } catch (err) {
       setStartError(err.details?.[0]?.message || err.message);
     } finally {
@@ -73,6 +98,7 @@ export default function TalkPage() {
     setEnding(false);
     setCall(null);
     setPhase("ended");
+    notifyHost("call-ended");
   }, [call, token]);
 
   // Closing the tab cancels ordinary requests, so the hang-up goes as a beacon.
@@ -83,11 +109,11 @@ export default function TalkPage() {
     return () => window.removeEventListener("pagehide", onLeave);
   }, [call, token]);
 
-  if (isLoading) return <Shell><p className="text-center text-text-muted">Loading…</p></Shell>;
+  if (isLoading) return <Shell embedded={embedded}><p className="text-center text-text-muted">Loading…</p></Shell>;
 
   if (error || !data) {
     return (
-      <Shell>
+      <Shell embedded={embedded}>
         <div className="text-center">
           <h1 className="text-h2">This link is not active</h1>
           <p className="mt-2 text-text-muted">
@@ -102,7 +128,7 @@ export default function TalkPage() {
 
   if (phase === "call" && call) {
     return (
-      <Shell wide>
+      <Shell wide embedded={embedded}>
         <CallSurface
           connection={call}
           avatar={avatar}
@@ -116,7 +142,7 @@ export default function TalkPage() {
 
   if (phase === "ended") {
     return (
-      <Shell>
+      <Shell embedded={embedded}>
         <div className="text-center">
           <MediaPreview
             src={avatar.previewUrl}
@@ -125,7 +151,7 @@ export default function TalkPage() {
           />
           <h1 className="mt-5 text-h2">Thanks{guest.name ? `, ${guest.name.split(" ")[0]}` : ""}!</h1>
           <p className="mt-2 text-text-muted">
-            Your conversation with {avatar.name} has ended. You can close this tab.
+            Your conversation with {avatar.name} has ended.{embedded ? "" : " You can close this tab."}
           </p>
           <div className="mt-6 flex justify-center">
             <Button variant="secondary" onClick={() => setPhase("form")}>
@@ -138,7 +164,7 @@ export default function TalkPage() {
   }
 
   return (
-    <Shell>
+    <Shell embedded={embedded}>
       <div className="overflow-hidden rounded-xl border border-border bg-surface">
         <MediaPreview src={avatar.previewUrl} className="aspect-[4/3] w-full" />
         <form onSubmit={start} className="p-6">
@@ -151,15 +177,16 @@ export default function TalkPage() {
             <>
               <div className="mt-6">
                 <Field
-                  label="Your name"
+                  label={embedded ? "Your name (optional)" : "Your name"}
                   value={guest.name}
                   onChange={(name) => setGuest((g) => ({ ...g, name }))}
                   placeholder="Priya Sharma"
                   autoComplete="name"
-                  required
+                  required={!embedded}
                   maxLength={80}
                   disabled={starting}
                 />
+                {!embedded && (
                 <Field
                   label="Email (optional)"
                   type="email"
@@ -170,6 +197,7 @@ export default function TalkPage() {
                   maxLength={200}
                   disabled={starting}
                 />
+                )}
               </div>
 
               {startError && <p className="mt-4 text-ui text-red">{startError}</p>}
@@ -179,14 +207,14 @@ export default function TalkPage() {
                 size="lg"
                 fullWidth
                 className="mt-6"
-                disabled={starting || !guest.name.trim()}
+                disabled={starting || (!embedded && !guest.name.trim())}
               >
                 {starting ? "Connecting…" : "Join call"}
               </Button>
 
               <p className="mt-4 text-label leading-relaxed text-text-faint">
                 Your browser will ask to use your microphone. The conversation is transcribed, and
-                the transcript is shared with whoever sent you this link.
+                the transcript is shared with {embedded ? "the owner of this website" : "whoever sent you this link"}.
               </p>
             </>
           ) : (
@@ -200,7 +228,15 @@ export default function TalkPage() {
   );
 }
 
-function Shell({ children, wide = false }) {
+function Shell({ children, wide = false, embedded = false }) {
+  // Inside an iframe the host site sets the size; fill it and drop the footer.
+  if (embedded) {
+    return (
+      <div className="flex min-h-screen flex-col justify-center bg-bg p-3">
+        <main className="mx-auto w-full max-w-md">{children}</main>
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-screen flex-col bg-bg">
       <main

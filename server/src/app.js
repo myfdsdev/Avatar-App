@@ -9,6 +9,7 @@ import { implementedProviderIds } from "./avatar/providers/registry.js";
 import avatarRoutes from "./modules/avatars/avatar.routes.js";
 import roomRoutes from "./modules/rooms/room.routes.js";
 import studioRoutes from "./modules/studio/studio.routes.js";
+import voiceRoutes from "./modules/voices/voice.routes.js";
 import providerWebhooks from "./webhooks/provider.webhook.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import analyticsRoutes from "./modules/analytics/analytics.routes.js";
@@ -60,6 +61,7 @@ export function createApp() {
   app.use("/api/avatars", requireAuth, avatarRoutes);
   app.use("/api/rooms", requireAuth, roomRoutes);
   app.use("/api/studio", requireAuth, studioRoutes);
+  app.use("/api/voices", requireAuth, voiceRoutes);
   app.use("/api/analytics", requireAuth, analyticsRoutes);
   app.use("/api/conversations", requireAuth, conversationRoutes);
   // Platform admin. Signed in to reach it; ADMIN_EMAILS to get past /access.

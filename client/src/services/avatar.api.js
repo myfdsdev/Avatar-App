@@ -25,3 +25,5 @@ export const avatarApi = {
 
 /** The address a share token is opened at. */
 export const shareUrl = (token) => `${window.location.origin}/talk/${token}`;
+export const embedUrl = (token) => `${window.location.origin}/embed/${token}`;
+export const widgetScriptUrl = () => `${window.location.origin}/embed.js`;

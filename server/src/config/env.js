@@ -89,6 +89,10 @@ export const env = {
   ttsModel: optional("TTS_MODEL", "inworld/inworld-tts-2"),
   // Inference TTS requires a voice as well as a model.
   ttsVoice: optional("TTS_VOICE", "Ashley"),
+  // Custom voices (v_* ids cloned in the LiveKit Cloud dashboard) only speak
+  // through the models LiveKit clones them onto - Cartesia and Inworld 1.5 -
+  // so calls with one switch to this model instead of TTS_MODEL.
+  customVoiceTtsModel: optional("CUSTOM_VOICE_TTS_MODEL", "cartesia/sonic-3"),
 
   // Where the API is reachable from outside. The local storage driver builds
   // its URLs from this, so a tunnel host belongs here when testing a real vendor.

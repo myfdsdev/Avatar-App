@@ -36,6 +36,7 @@ export default function AppRouter() {
 
       {/* Public: anyone with an avatar's share link, no account needed. */}
       <Route path="/talk/:token" element={<TalkPage />} />
+      <Route path="/embed/:token" element={<TalkPage embedded />} />
 
       <Route path="/" element={app(<Home />, { wide: true })} />
       <Route path="/avatars" element={app(<AvatarList />)} />

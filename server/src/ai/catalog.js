@@ -61,6 +61,20 @@ export function voiceFor(avatar, model = env.ttsModel) {
   return { voice: env.ttsVoice, assigned: false };
 }
 
+/**
+ * A custom voice cloned in the LiveKit Cloud dashboard, e.g. "v_RT5PsNhXvMaB".
+ * It is one id for every provider LiveKit cloned it onto, so it is valid under
+ * any TTS model that supports clones rather than belonging to one voice list.
+ */
+export const isCustomVoice = (id) => typeof id === "string" && /^v_[A-Za-z0-9]{6,40}$/.test(id);
+
+/**
+ * The TTS model a voice speaks through. Stock voices use the install's model;
+ * custom ones need a model LiveKit clones onto, which the default Inworld one
+ * need not be.
+ */
+export const ttsModelFor = (voice) => (isCustomVoice(voice) ? env.customVoiceTtsModel : env.ttsModel);
+
 /** The voice a new avatar gets for its character, or the install default. */
 export function defaultVoiceFor(gender) {
   if (voicesForTts().length && DEFAULT_VOICE[gender]) return DEFAULT_VOICE[gender];

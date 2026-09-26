@@ -2,6 +2,7 @@ import { useState } from "react";
 import clsx from "clsx";
 import MediaPreview from "@/components/media/MediaPreview";
 import KnowledgeBase from "./KnowledgeBase";
+import CustomVoices, { useCustomVoices } from "./CustomVoices";
 
 /**
  * An avatar's settings, laid out like LemonSlice's: a section label with a
@@ -57,7 +58,9 @@ export default function AvatarSettings({ avatar, options, onChange }) {
 
   const p = draft.persona;
   const voices = options?.voices || [];
+  const { data: customVoices = [] } = useCustomVoices();
   const voice = p.voice || options?.defaultVoice || "";
+  const known = voices.some((v) => v.id === voice) || customVoices.some((v) => v.providerVoiceId === voice);
   const llms = options?.llmModels || [];
   const llm = p.llmModel || options?.defaultLlmModel || "";
   const chosenLlm = llms.find((m) => m.id === llm);
@@ -97,10 +100,23 @@ export default function AvatarSettings({ avatar, options, onChange }) {
             <Select
               value={voice}
               onChange={(value) => setPersona({ voice: value }, { now: true })}
-              disabled={!voices.length}
-              title={voices.length ? undefined : "This TTS model has no voice list; the install default is used."}
+              disabled={!voices.length && !customVoices.length}
+              title={
+                voices.length || customVoices.length
+                  ? undefined
+                  : "This TTS model has no voice list; the install default is used."
+              }
             >
-              {!voices.some((v) => v.id === voice) && voice && <option value={voice}>{voice}</option>}
+              {!known && voice && <option value={voice}>{voice}</option>}
+              {customVoices.length > 0 && (
+                <optgroup label="Your voices">
+                  {customVoices.map((v) => (
+                    <option key={v._id} value={v.providerVoiceId}>
+                      {v.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
               {["female", "male"].map((g) => (
                 <optgroup key={g} label={g === "female" ? "Female" : "Male"}>
                   {voices
@@ -114,6 +130,11 @@ export default function AvatarSettings({ avatar, options, onChange }) {
               ))}
             </Select>
           </Row>
+          <CustomVoices
+            selected={voice}
+            // A freshly added voice is almost always wanted on the avatar at hand.
+            onAdded={(v) => setPersona({ voice: v.providerVoiceId }, { now: true })}
+          />
           <Row title="Voice speed">
             <div className="flex w-[200px] items-center gap-3">
               <span className="w-9 text-right text-ui tabular-nums text-text-muted">

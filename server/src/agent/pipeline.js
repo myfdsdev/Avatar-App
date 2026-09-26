@@ -3,7 +3,7 @@ import * as anthropic from "@livekit/agents-plugin-anthropic";
 import { livekitConfig } from "../integrations/livekit/index.js";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
-import { isHostedModel, speedOption, voiceFor } from "../ai/catalog.js";
+import { isHostedModel, speedOption, ttsModelFor, voiceFor } from "../ai/catalog.js";
 
 /**
  * Builds the speech and language half of a call.
@@ -101,16 +101,17 @@ function buildTts(avatar) {
   const persona = avatar?.persona;
   const { voice, assigned } = voiceFor(avatar);
   const language = persona?.language || avatar?.voice?.language || env.sttLanguage;
-  const modelOptions = speedOption(env.ttsModel, persona?.voiceSpeed);
+  const model = ttsModelFor(voice);
+  const modelOptions = speedOption(model, persona?.voiceSpeed);
 
   return {
     instance: new inference.TTS({
-      model: env.ttsModel,
+      model,
       voice,
       language,
       ...(modelOptions && { modelOptions }),
     }),
-    label: `${env.ttsModel} / ${voice}${modelOptions ? ` @ ${persona.voiceSpeed}x` : ""}`,
+    label: `${model} / ${voice}${modelOptions ? ` @ ${persona.voiceSpeed}x` : ""}`,
     note: assigned ? null : `Avatar has no voice assigned; using the default "${voice}".`,
   };
 }

@@ -1,7 +1,7 @@
 import { CAPABILITIES } from "../avatar/capabilities.js";
 import { isConfigured } from "../avatar/providers/registry.js";
 import { env } from "../config/env.js";
-import { LANGUAGES, isHostedModel, llmModels, voiceFor, voicesForTts } from "../ai/catalog.js";
+import { LANGUAGES, isCustomVoice, isHostedModel, llmModels, voiceFor, voicesForTts } from "../ai/catalog.js";
 import { CONTEXT_BUDGET_CHARS } from "../ai/knowledge.js";
 import { agentIdOf } from "../avatar/providers/lemonslice.provider.js";
 
@@ -57,7 +57,8 @@ export async function preflight(avatar, { network = false } = {}) {
   // What it sounds like.
   const voices = voicesForTts();
   const { voice } = voiceFor({ ...avatar, persona });
-  if (voices.length && !voices.some((v) => v.id === voice)) {
+  // A custom voice is checked by LiveKit when the call speaks, not by any list here.
+  if (!isCustomVoice(voice) && voices.length && !voices.some((v) => v.id === voice)) {
     errors.push(`Voice "${voice}" is not a voice of the TTS model ${env.ttsModel}.`);
   }
   if (persona.voiceSpeed != null && (persona.voiceSpeed < 0.5 || persona.voiceSpeed > 1.5)) {
