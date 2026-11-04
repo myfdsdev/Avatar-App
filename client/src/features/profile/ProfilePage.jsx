@@ -10,6 +10,7 @@ import UserAvatar from "@/components/common/UserAvatar";
 import Field from "@/components/forms/Field";
 import { Badge, Label, Select } from "@/components/forms/controls";
 import { toast } from "@/components/feedback/Toast";
+import ApiKeysForm, { useByok } from "@/features/byok/ApiKeysForm";
 
 /**
  * The signed-in person's own page: who they are, their picture, the workspace
@@ -49,6 +50,7 @@ export default function ProfilePage() {
         <PhotoCard profile={profile} onChange={adopt} />
         <DetailsCard key={profile.id} profile={profile} onSaved={adopt} />
         <WorkspaceCard key={`w-${profile.workspace?.id}`} profile={profile} onSaved={adopt} />
+        <ApiKeysCard />
         <PasswordCard profile={profile} />
       </div>
     </>
@@ -194,6 +196,23 @@ function DetailsCard({ profile, onSaved }) {
           {!changed && !save.isPending && <span className="text-label text-text-faint">Member since {day(profile.createdAt)}</span>}
         </div>
       </form>
+    </Card>
+  );
+}
+
+/** The workspace's own LemonSlice and ElevenLabs keys; the same form as the popup on open. */
+function ApiKeysCard() {
+  const { data } = useByok();
+  return (
+    <Card title="API keys">
+      <p className="mt-2 text-ui text-text-muted">
+        Avatars in this workspace run on your own LemonSlice and ElevenLabs accounts. Keys are stored encrypted and never shown again.
+      </p>
+      {data && (
+        <div className="mt-4">
+          <ApiKeysForm status={data.keys} canManage={data.canManage} />
+        </div>
+      )}
     </Card>
   );
 }

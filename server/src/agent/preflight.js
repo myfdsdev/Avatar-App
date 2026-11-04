@@ -12,6 +12,7 @@ import {
 } from "../ai/catalog.js";
 import { CONTEXT_BUDGET_CHARS } from "../ai/knowledge.js";
 import { agentIdOf } from "../avatar/providers/lemonslice.provider.js";
+import { byokKey } from "../modules/byok/byok.context.js";
 
 /**
  * Everything about an avatar that would stop - or quietly degrade - a call,
@@ -38,7 +39,7 @@ export async function preflight(avatar, { network = false } = {}) {
   if (!caps) errors.push(`Unknown avatar provider "${avatar.providerId}".`);
   else if (!caps.nodePlugin) errors.push(`${avatar.providerId} cannot run in this Node worker.`);
   if (caps && !isConfigured(avatar.providerId)) {
-    errors.push(`${avatar.providerId} has no API key configured on the server.`);
+    errors.push(`This workspace has no ${avatar.providerId} API key. Add one in Profile -> API keys.`);
   }
   if (avatar.status !== "ready") errors.push(`The avatar is "${avatar.status}", not ready.`);
 
@@ -69,8 +70,8 @@ export async function preflight(avatar, { network = false } = {}) {
   if (!isOwnVoice(voice) && voices.length && !voices.some((v) => v.id === voice)) {
     errors.push(`Voice "${voice}" is not a voice of the TTS model ${env.ttsModel}.`);
   }
-  if (isElevenLabsVoice(voice) && !env.elevenlabs.apiKey) {
-    warnings.push(`The cloned voice needs ELEVENLABS_API_KEY; calls fall back to "${env.ttsVoice}".`);
+  if (isElevenLabsVoice(voice) && !byokKey("elevenlabs")) {
+    warnings.push(`The cloned voice needs the workspace's ElevenLabs key; calls fall back to "${env.ttsVoice}".`);
   }
   if (persona.voiceSpeed != null && (persona.voiceSpeed < 0.5 || persona.voiceSpeed > 1.5)) {
     errors.push(`Voice speed ${persona.voiceSpeed} is outside 0.5-1.5.`);

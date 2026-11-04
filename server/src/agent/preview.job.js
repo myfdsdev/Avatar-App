@@ -15,6 +15,7 @@ import { agentIdOf } from "../avatar/providers/lemonslice.provider.js";
 import { getRenderer } from "./renderers/registry.js";
 import { buildPipelineConfig } from "./pipeline.js";
 import { clipSizeFor } from "./clipSize.js";
+import { enterWorkspaceKeys } from "../modules/byok/byok.context.js";
 
 /**
  * Records an avatar's hover clip: the face saying one line, a few seconds
@@ -78,6 +79,7 @@ export async function runPreview(ctx) {
     if (!doc) throw new Error(`avatar ${avatarId} not found`);
     if (agentIdOf(doc)) throw new Error("LemonSlice agents have their own clip");
     const avatar = { ...doc, persona: doc.personaId, voice: doc.voiceId, documents: [] };
+    await enterWorkspaceKeys(doc.workspaceId);
 
     const pipeline = buildPipelineConfig(avatar);
     if (!pipeline.available) throw new Error(pipeline.reason);

@@ -1,6 +1,6 @@
 import { MockAvatarRenderer } from "./mock.renderer.js";
 import { LemonSliceRenderer } from "./lemonslice.renderer.js";
-import { env } from "../../config/env.js";
+import { byokKey } from "../../modules/byok/byok.context.js";
 
 /**
  * Runtime counterpart to avatar/providers/registry.js.
@@ -11,7 +11,8 @@ import { env } from "../../config/env.js";
  */
 const FACTORIES = {
   mock: () => new MockAvatarRenderer(),
-  lemonslice: () => new LemonSliceRenderer({ apiKey: env.lemonsliceApiKey }),
+  // Built per call, with the called avatar's workspace key.
+  lemonslice: () => new LemonSliceRenderer({ apiKey: byokKey("lemonslice") }),
 };
 
 export function getRenderer(providerId) {

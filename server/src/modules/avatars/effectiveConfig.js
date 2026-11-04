@@ -11,6 +11,7 @@ import {
 } from "../../ai/catalog.js";
 import { mailConfigured } from "../../integrations/mail/index.js";
 import { getRates, rateFor } from "../billing/credit.service.js";
+import { byokKey } from "../../modules/byok/byok.context.js";
 
 /**
  * An avatar's configuration as a person can verify it.
@@ -95,13 +96,13 @@ function llmFor(persona) {
 /** The voice a call will really speak, mirroring agent/pipeline.js:buildTts. */
 function voiceEffective(avatar, persona) {
   const { voice, assigned } = voiceFor({ ...avatar, persona });
-  if (isElevenLabsVoice(voice) && !env.elevenlabs.apiKey) {
+  if (isElevenLabsVoice(voice) && !byokKey("elevenlabs")) {
     return {
       configured: voice,
       spoken: env.ttsVoice,
       model: ttsModelFor(env.ttsVoice),
       substituted: true,
-      reason: "This is an ElevenLabs voice and the server has no ELEVENLABS_API_KEY.",
+      reason: "This is an ElevenLabs voice and the workspace has no ElevenLabs key.",
     };
   }
   return {
@@ -183,7 +184,7 @@ export async function describeAvatar(avatar) {
   for (const message of checked.errors) warnings.push({ code: "call_will_fail", message });
   for (const message of checked.warnings) {
     // Said again, with the voice names, by voice_substituted below.
-    if (/ELEVENLABS_API_KEY/.test(message) && voice.substituted) continue;
+    if (/ElevenLabs key/.test(message) && voice.substituted) continue;
     warnings.push({ code: "degraded", message });
   }
 

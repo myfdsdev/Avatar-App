@@ -24,7 +24,6 @@ import {
 } from "../../src/models/index.js";
 import { applyApiConfigs, classifyProbe, forgetEnvOriginals } from "../../src/modules/admin/system/apiConfig.service.js";
 import { startOfDay, startOfMonth } from "../../src/modules/admin/system/analytics.service.js";
-import { getProvider } from "../../src/avatar/providers/registry.js";
 import { getStorage } from "../../src/integrations/storage/registry.js";
 import { logError } from "../../src/utils/errorLog.js";
 
@@ -281,95 +280,95 @@ describe("API keys", () => {
   beforeEach(async () => {
     await ApiConfiguration.deleteMany({});
     // Independent of the developer's own .env, whatever it holds.
-    env.lemonsliceApiKey = "";
     env.anthropicApiKey = "";
-    env.elevenlabs.apiKey = "";
+    env.kie.apiKey = "";
     forgetEnvOriginals();
     await applyApiConfigs();
   });
 
-  test("seeds this app's providers and flags the required one", async () => {
+  test("seeds this app's providers; LemonSlice and ElevenLabs are left to each workspace", async () => {
     const { status, body } = await admin.get("/api/admin/api-configs");
 
     assert.equal(status, 200);
-    assert.deepEqual(body.configs.map((c) => c.serviceName), ["lemonslice", "anthropic", "elevenlabs", "kie_ai", "stripe", "stripe_webhook"]);
-    const lemon = body.configs[0];
-    assert.equal(lemon.required, true);
-    assert.equal(lemon.envVar, "LEMONSLICE_API_KEY");
-    assert.deepEqual(lemon.key, { hasKey: false, last4: null, source: "none", storedInDatabase: false });
+    assert.deepEqual(body.configs.map((c) => c.serviceName), ["anthropic", "kie_ai", "stripe", "stripe_webhook"]);
+    const claude = body.configs[0];
+    assert.equal(claude.required, false);
+    assert.equal(claude.envVar, "ANTHROPIC_API_KEY");
+    assert.deepEqual(claude.key, { hasKey: false, last4: null, source: "none", storedInDatabase: false });
     assert.deepEqual(body.environment.map((e) => e.id), ["livekit", "storage"]);
+    assert.equal((await admin.put("/api/admin/api-configs/lemonslice", { apiKey: KEY })).status, 404);
+    assert.equal((await admin.put("/api/admin/api-configs/elevenlabs", { apiKey: KEY })).status, 404);
   });
 
   test("never returns a key, in any response or in the database as plain text", async () => {
-    const saved = await admin.put("/api/admin/api-configs/lemonslice", { apiKey: KEY });
+    const saved = await admin.put("/api/admin/api-configs/anthropic", { apiKey: KEY });
     assert.equal(saved.status, 200);
     assert.deepEqual(saved.body.config.key, { hasKey: true, last4: "WXYZ", source: "database", storedInDatabase: true });
 
     const responses = [
       JSON.stringify(saved.body),
       JSON.stringify((await admin.get("/api/admin/api-configs")).body),
-      JSON.stringify((await admin.post("/api/admin/api-configs/lemonslice/test")).body),
+      JSON.stringify((await admin.post("/api/admin/api-configs/anthropic/test")).body),
     ];
     for (const text of responses) assert.ok(!text.includes(KEY) && !text.includes("0123456789abcdef"), "key leaked");
 
-    const raw = await ApiConfiguration.findOne({ serviceName: "lemonslice" }).lean();
+    const raw = await ApiConfiguration.findOne({ serviceName: "anthropic" }).lean();
     assert.ok(raw.apiKey && !raw.apiKey.includes("0123456789"), "stored key is sealed");
   });
 
   test("a saved key replaces the environment's, and switching off puts it back", async () => {
-    env.lemonsliceApiKey = "from-environment";
+    env.anthropicApiKey = "from-environment";
     // Boot would have captured it; do the same.
     forgetEnvOriginals();
     await applyApiConfigs();
-    assert.equal(env.lemonsliceApiKey, "from-environment");
+    assert.equal(env.anthropicApiKey, "from-environment");
 
-    await admin.put("/api/admin/api-configs/lemonslice", { apiKey: KEY });
-    assert.equal(env.lemonsliceApiKey, KEY, "applied immediately, in this process");
-    assert.equal(getProvider("lemonslice").apiKey, KEY, "the cached provider follows too");
+    await admin.put("/api/admin/api-configs/anthropic", { apiKey: KEY });
+    assert.equal(env.anthropicApiKey, KEY, "applied immediately, in this process");
 
-    const off = await admin.put("/api/admin/api-configs/lemonslice", { isActive: false });
-    assert.equal(env.lemonsliceApiKey, "from-environment");
+    const off = await admin.put("/api/admin/api-configs/anthropic", { isActive: false });
+    assert.equal(env.anthropicApiKey, "from-environment");
     assert.equal(off.body.config.key.source, "environment");
     assert.equal(off.body.config.key.storedInDatabase, true);
 
-    await admin.put("/api/admin/api-configs/lemonslice", { isActive: true });
-    assert.equal(env.lemonsliceApiKey, KEY);
+    await admin.put("/api/admin/api-configs/anthropic", { isActive: true });
+    assert.equal(env.anthropicApiKey, KEY);
 
     // A fresh boot (or an agent job) reads the same thing from the database.
-    env.lemonsliceApiKey = "";
-    assert.deepEqual(await applyApiConfigs(), ["lemonslice"]);
-    assert.equal(env.lemonsliceApiKey, KEY);
+    env.anthropicApiKey = "";
+    assert.deepEqual(await applyApiConfigs(), ["anthropic"]);
+    assert.equal(env.anthropicApiKey, KEY);
 
-    await admin.put("/api/admin/api-configs/lemonslice", { clearKey: true });
-    assert.equal(env.lemonsliceApiKey, "from-environment");
-    env.lemonsliceApiKey = "";
+    await admin.put("/api/admin/api-configs/anthropic", { clearKey: true });
+    assert.equal(env.anthropicApiKey, "from-environment");
+    env.anthropicApiKey = "";
     await applyApiConfigs();
   });
 
   test("applies the other providers' keys to the fields they are read from", async () => {
     await admin.put("/api/admin/api-configs/anthropic", { apiKey: "anthropic-key-1234567890" });
-    await admin.put("/api/admin/api-configs/elevenlabs", { apiKey: "eleven-key-1234567890" });
+    await admin.put("/api/admin/api-configs/kie_ai", { apiKey: "kie-key-1234567890" });
     assert.equal(env.anthropicApiKey, "anthropic-key-1234567890");
-    assert.equal(env.elevenlabs.apiKey, "eleven-key-1234567890");
+    assert.equal(env.kie.apiKey, "kie-key-1234567890");
     await ApiConfiguration.deleteMany({});
     await applyApiConfigs();
     assert.equal(env.anthropicApiKey, "");
-    assert.equal(env.elevenlabs.apiKey, "");
+    assert.equal(env.kie.apiKey, "");
   });
 
   test("only changes the key when a new one is submitted", async () => {
-    await admin.put("/api/admin/api-configs/lemonslice", { apiKey: KEY });
-    const res = await admin.put("/api/admin/api-configs/lemonslice", { baseUrl: "https://example.test/api" });
+    await admin.put("/api/admin/api-configs/anthropic", { apiKey: KEY });
+    const res = await admin.put("/api/admin/api-configs/anthropic", { baseUrl: "https://example.test/api" });
 
     assert.equal(res.body.config.baseUrl, "https://example.test/api");
     assert.equal(res.body.config.key.last4, "WXYZ");
-    assert.equal(env.lemonsliceApiKey, KEY);
+    assert.equal(env.anthropicApiKey, KEY);
   });
 
   test("validates what is submitted", async () => {
-    assert.equal((await admin.put("/api/admin/api-configs/lemonslice", { apiKey: "short" })).status, 400);
-    assert.equal((await admin.put("/api/admin/api-configs/lemonslice", { baseUrl: "ftp://x" })).status, 400);
-    assert.equal((await admin.put("/api/admin/api-configs/lemonslice", { surprise: 1 })).status, 400);
+    assert.equal((await admin.put("/api/admin/api-configs/anthropic", { apiKey: "short" })).status, 400);
+    assert.equal((await admin.put("/api/admin/api-configs/anthropic", { baseUrl: "ftp://x" })).status, 400);
+    assert.equal((await admin.put("/api/admin/api-configs/anthropic", { surprise: 1 })).status, 400);
     assert.equal((await admin.put("/api/admin/api-configs/nobody", { isActive: true })).status, 404);
   });
 
@@ -385,7 +384,7 @@ describe("API keys", () => {
     before(() => {
       // Only vendor addresses are faked; the test client's own calls pass through.
       globalThis.fetch = async (url, init) => {
-        if (String(url).startsWith("https://lemonslice.com/")) {
+        if (String(url).startsWith("https://api.anthropic.com/")) {
           seen = { url: String(url), headers: init?.headers };
           if (answer instanceof Error) throw answer;
           return new Response(JSON.stringify(answer.body ?? {}), { status: answer.status });
@@ -399,17 +398,17 @@ describe("API keys", () => {
 
     const run = async (reply) => {
       answer = reply;
-      return (await admin.post("/api/admin/api-configs/lemonslice/test")).body;
+      return (await admin.post("/api/admin/api-configs/anthropic/test")).body;
     };
-    const stats = async () => (await ApiConfiguration.findOne({ serviceName: "lemonslice" }).lean()).usageStats;
+    const stats = async () => (await ApiConfiguration.findOne({ serviceName: "anthropic" }).lean()).usageStats;
 
     test("classifies the vendor's answer", async () => {
-      await admin.put("/api/admin/api-configs/lemonslice", { apiKey: KEY });
+      await admin.put("/api/admin/api-configs/anthropic", { apiKey: KEY });
 
       let r = await run({ status: 200 });
       assert.deepEqual([r.outcome, r.ok, r.source], ["valid", true, "database"]);
       assert.equal(r.message, "Connection successful! API key is valid and working properly.");
-      assert.equal(seen.headers["X-API-Key"], KEY, "the real key is sent, server-side");
+      assert.equal(seen.headers["x-api-key"], KEY, "the real key is sent, server-side");
 
       r = await run({ status: 401 });
       assert.deepEqual([r.outcome, r.ok], ["invalid", false]);
@@ -430,7 +429,7 @@ describe("API keys", () => {
     });
 
     test("updates the request counters", async () => {
-      await admin.put("/api/admin/api-configs/lemonslice", { apiKey: KEY });
+      await admin.put("/api/admin/api-configs/anthropic", { apiKey: KEY });
       await run({ status: 200 });
       await run({ status: 401 });
       await run({ status: 500 });
@@ -446,12 +445,12 @@ describe("API keys", () => {
     });
 
     test("tests the environment's key when none is saved", async () => {
-      env.lemonsliceApiKey = "environment-key-abcd";
+      env.anthropicApiKey = "environment-key-abcd";
       forgetEnvOriginals();
       await applyApiConfigs();
       const r = await run({ status: 200 });
       assert.equal(r.source, "environment");
-      assert.equal(seen.headers["X-API-Key"], "environment-key-abcd");
+      assert.equal(seen.headers["x-api-key"], "environment-key-abcd");
     });
   });
 

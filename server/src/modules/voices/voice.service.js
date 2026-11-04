@@ -1,7 +1,7 @@
 import { Voice } from "../../models/index.js";
-import { env } from "../../config/env.js";
 import { logger } from "../../config/logger.js";
 import { elevenLabsVoiceId, toElevenLabsVoice } from "../../ai/catalog.js";
+import { byokKey } from "../../modules/byok/byok.context.js";
 
 /**
  * The workspace's own voices, from two places:
@@ -26,7 +26,7 @@ const fail = (message, statusCode) => Object.assign(new Error(message), { status
 async function elevenLabs(path, init) {
   const res = await fetch(`${ELEVENLABS_API}${path}`, {
     ...init,
-    headers: { "xi-api-key": env.elevenlabs.apiKey, ...init?.headers },
+    headers: { "xi-api-key": byokKey("elevenlabs"), ...init?.headers },
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -41,9 +41,9 @@ async function elevenLabs(path, init) {
 }
 
 export const voiceService = {
-  /** What the voice UI can offer on this install. */
+  /** What the voice UI can offer this workspace: cloning needs its own ElevenLabs key. */
   capabilities() {
-    return { cloning: Boolean(env.elevenlabs.apiKey) };
+    return { cloning: Boolean(byokKey("elevenlabs")) };
   },
 
   list(workspace) {
@@ -78,7 +78,7 @@ export const voiceService = {
    * dropped with the request.
    */
   async clone({ workspace, name, description, gender, language, file }) {
-    if (!env.elevenlabs.apiKey) throw fail("Voice cloning is not set up: add ELEVENLABS_API_KEY on the server.", 503);
+    if (!byokKey("elevenlabs")) throw fail("Voice cloning needs your ElevenLabs API key. Add it in Profile -> API keys.", 503);
     if (!file) throw fail("Add a recording of the voice.", 422);
     if (!/^(audio|video)\//.test(file.mimetype)) throw fail("That file is not audio. Use MP3, WAV, M4A, OGG or WEBM.", 422);
 
@@ -111,7 +111,7 @@ export const voiceService = {
    * or a voice from some other account is refused now rather than mid-call.
    */
   async importElevenLabs({ workspace, voiceId, name, gender, language }) {
-    if (!env.elevenlabs.apiKey) throw fail("ElevenLabs is not set up: add ELEVENLABS_API_KEY on the server.", 503);
+    if (!byokKey("elevenlabs")) throw fail("Add your ElevenLabs API key in Profile -> API keys first.", 503);
 
     const providerVoiceId = toElevenLabsVoice(voiceId);
     const existing = await Voice.findOne({ workspaceId: workspace._id, provider: "elevenlabs", providerVoiceId });
@@ -146,7 +146,7 @@ export const voiceService = {
     // Removing a clone here removes it at ElevenLabs too, so the person's voice
     // is not left behind in the account. Best effort: if ElevenLabs already
     // lost it, or the key has changed, the record still goes.
-    if (voice.provider === "elevenlabs" && !voice.imported && env.elevenlabs.apiKey) {
+    if (voice.provider === "elevenlabs" && !voice.imported && byokKey("elevenlabs")) {
       await elevenLabs(`/voices/${encodeURIComponent(elevenLabsVoiceId(voice.providerVoiceId))}`, {
         method: "DELETE",
       }).catch((err) => logger.warn({ err: err.message, voiceId }, "elevenlabs voice not deleted"));

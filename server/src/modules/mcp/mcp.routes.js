@@ -6,6 +6,7 @@ import { metadata, oauthService } from "../oauth/oauth.service.js";
 import { createAvatarMcpServer } from "./mcp.tools.js";
 import { Workspace } from "../../models/index.js";
 import { logger } from "../../config/logger.js";
+import { enterWorkspaceKeys } from "../byok/byok.context.js";
 
 /**
  * POST /api/mcp - the app as an MCP server (streamable HTTP, stateless).
@@ -43,6 +44,8 @@ router.post("/", async (req, res) => {
 
   const workspace = await Workspace.findById(who.workspaceId);
   if (!workspace) return rpcError(res, 403, "Workspace no longer exists");
+  // Tools that reach LemonSlice or ElevenLabs use this workspace's own keys.
+  await enterWorkspaceKeys(workspace);
 
   const server = createAvatarMcpServer({ workspace, userId: who.userId });
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });

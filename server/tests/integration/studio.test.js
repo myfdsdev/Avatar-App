@@ -140,7 +140,7 @@ describe("photo upload", () => {
 
     // Rejected for the missing key, not for the storage driver - LemonSlice
     // never fetches the image itself.
-    assert.match(body.error.message, /no API key configured/);
+    assert.match(body.error.message, /no API key for this workspace/);
     assert.doesNotMatch(body.error.message, /STORAGE_DRIVER|fetches uploads/);
   });
 

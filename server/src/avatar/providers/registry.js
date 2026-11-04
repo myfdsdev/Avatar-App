@@ -3,6 +3,7 @@ import { MockAvatarProvider } from "./mock.provider.js";
 import { LemonSliceProvider } from "./lemonslice.provider.js";
 import { env } from "../../config/env.js";
 import { NotSupportedError, UnavailableInRuntimeError } from "./base.provider.js";
+import { byokKey } from "../../modules/byok/byok.context.js";
 
 /**
  * Resolves which vendor handles a given request.
@@ -19,7 +20,7 @@ const instances = new Map();
 const FACTORIES = {
   mock: () => new MockAvatarProvider(),
   "mock-hosted": () => new MockAvatarProvider({ id: "mock-hosted" }),
-  lemonslice: () => new LemonSliceProvider({ apiKey: env.lemonsliceApiKey }),
+  lemonslice: () => new LemonSliceProvider(),
 };
 
 /**
@@ -47,7 +48,8 @@ export const implementedProviderIds = () => Object.keys(FACTORIES);
 const CREDENTIALS = {
   mock: () => true,
   "mock-hosted": () => true,
-  lemonslice: () => Boolean(env.lemonsliceApiKey),
+  // The workspace's own key - see modules/byok/byok.context.js.
+  lemonslice: () => Boolean(byokKey("lemonslice")),
 };
 
 /**
@@ -106,8 +108,8 @@ export function selectProvider({ sourceType, preferred }) {
     }
     if (!isConfigured(preferred)) {
       const err = new Error(
-        `Provider "${preferred}" has no API key configured, so avatars created ` +
-          `with it could not be called.`,
+        `Provider "${preferred}" has no API key for this workspace, so avatars created ` +
+          `with it could not be called. Add one in Profile -> API keys.`,
       );
       err.statusCode = 422;
       throw err;
@@ -149,7 +151,7 @@ function noProviderAvailable(sourceType, preferredDefault) {
   const err = new Error(
     unconfigured.length
       ? `No provider is configured for ${sourceType} avatars. ` +
-        `Add an API key for one of: ${unconfigured.join(", ")}. ` +
+        `Add your API key for one of: ${unconfigured.join(", ")} in Profile -> API keys. ` +
         `To use the local stub instead, set AVATAR_PROVIDER=${preferredDefault || "mock"}.`
       : `No implemented provider supports ${sourceType} avatars`,
   );

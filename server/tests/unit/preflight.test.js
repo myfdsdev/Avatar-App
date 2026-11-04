@@ -41,7 +41,7 @@ describe("preflight", () => {
 
   test("a vendor with no key, or an avatar not ready, cannot take calls", async () => {
     const lemon = await preflight({ ...good, providerId: "lemonslice", providerAvatarId: "agent_abc123" });
-    assert.match(lemon.errors.join(" "), /no API key/);
+    assert.match(lemon.errors.join(" "), /no lemonslice API key/);
 
     const training = await preflight({ ...good, status: "training" });
     assert.match(training.errors.join(" "), /not ready/);

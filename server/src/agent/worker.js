@@ -23,6 +23,7 @@ import { callLimitSeconds } from "./callLimit.js";
 import { createIdleWatch } from "./idleWatch.js";
 import { greetingFor, waitForFirstSpeech } from "./callStart.js";
 import { isPreviewRoom, runPreview } from "./preview.job.js";
+import { enterWorkspaceKeys } from "../modules/byok/byok.context.js";
 
 // How long LemonSlice keeps the face up with nothing to say, in a meeting.
 // The default (a minute) suits a one-to-one call, not a meeting that talks
@@ -58,6 +59,8 @@ export default defineAgent({
     }
 
     const { conversation, avatar } = await resolveJob(ctx);
+    // The call runs on the avatar's workspace's own LemonSlice / ElevenLabs keys.
+    await enterWorkspaceKeys(avatar.workspaceId);
 
     // Settings that would break the call are caught before a vendor session is
     // opened, and end it with the reason rather than leaving the caller on

@@ -93,3 +93,13 @@ function client(baseUrl, token) {
     },
   };
 }
+
+/**
+ * Sets (or with "" clears) a workspace's own vendor key, as the API key popup
+ * would, without asking the vendor. `service` is "lemonslice" or "elevenlabs".
+ */
+export async function setWorkspaceKey(workspaceId, service, key) {
+  const { Workspace } = await import("../src/models/index.js");
+  const { seal } = await import("../src/utils/secretBox.js");
+  await Workspace.updateOne({ _id: workspaceId }, { $set: { [`apiKeys.${service}`]: key ? seal(key) : "" } });
+}

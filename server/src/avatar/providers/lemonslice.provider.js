@@ -1,5 +1,6 @@
 import { BaseAvatarProvider, NotSupportedError } from "./base.provider.js";
 import { logger } from "../../config/logger.js";
+import { byokKey } from "../../modules/byok/byok.context.js";
 
 const AGENTS_API = "https://lemonslice.com/api/agents";
 
@@ -38,11 +39,17 @@ export function agentIdOf(avatar) {
  * LemonSlice uses the face and motion settings configured on its side.
  */
 export class LemonSliceProvider extends BaseAvatarProvider {
-  constructor({ apiKey } = {}) {
+  constructor() {
     super("lemonslice");
-    // Only the runtime renderer authenticates; the control plane never calls
-    // LemonSlice, so a missing key here is not an error.
-    this.apiKey = apiKey;
+  }
+
+  /**
+   * The calling workspace's own key, read per use: the registry keeps one
+   * instance for every workspace. Only the stock listing needs it here; a
+   * missing key is not an error for anything else.
+   */
+  get apiKey() {
+    return byokKey("lemonslice");
   }
 
   async createFromPhoto({ imageUrl, name }) {

@@ -21,6 +21,8 @@ process.env.ANTHROPIC_API_KEY = "";
 // Pinned rather than inherited, so a developer's own .env cannot change what
 // the suite exercises.
 process.env.LEMONSLICE_API_KEY = "";
+// The billing tests exercise the credit system, which the install leaves off.
+process.env.CREDITS_ENABLED = "true";
 process.env.ADMIN_EMAILS = "admin@example.com";
 
 // No real mail from a test run, whatever is in the developer's .env: with no

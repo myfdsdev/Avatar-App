@@ -2,7 +2,6 @@ import { ApiConfiguration } from "../../../models/index.js";
 import { env } from "../../../config/env.js";
 import { logger } from "../../../config/logger.js";
 import { seal, open } from "../../../utils/secretBox.js";
-import { getProvider } from "../../../avatar/providers/registry.js";
 import { getStorage } from "../../../integrations/storage/registry.js";
 
 /**
@@ -11,10 +10,10 @@ import { getStorage } from "../../../integrations/storage/registry.js";
  * A key saved here takes effect without a redeploy: applyApiConfigs() copies
  * it over the env field the rest of the app reads. That works because every
  * consumer reads `env.<field>` when it needs the key (checked: agent/pipeline,
- * preflight, ai/catalog, voices, the renderer registry), not once at import.
- * The one exception is the LemonSlice provider, which the registry builds once
- * and keeps - applyKey() updates that instance's key as well, so no provider
- * needs a restart.
+ * preflight, ai/catalog), not once at import.
+ *
+ * LemonSlice and ElevenLabs are not here: each workspace brings its own key
+ * (modules/byok), and the install's is never used for them.
  *
  * Credentials that cannot be swapped under a running process (LiveKit, R2) are
  * not editable here; environmentStatus() only reports them. Stripe's keys are
@@ -46,27 +45,6 @@ const fail = (status, message) => Object.assign(new Error(message), { statusCode
 /** @type {ProviderDef[]} */
 export const API_PROVIDERS = [
   {
-    serviceName: "lemonslice",
-    displayName: "LemonSlice",
-    description: "Renders the live avatar video in calls. Without a key no call can start.",
-    required: true,
-    envVar: "LEMONSLICE_API_KEY",
-    baseUrl: "https://lemonslice.com/api",
-    documentation: "https://lemonslice.com/docs",
-    get: () => env.lemonsliceApiKey,
-    set(value) {
-      env.lemonsliceApiKey = value;
-      // The registry builds this provider once and keeps its key, so it is
-      // updated in place rather than waiting for a restart.
-      try {
-        getProvider("lemonslice").apiKey = value;
-      } catch (err) {
-        logger.warn({ err: err.message }, "could not refresh the cached LemonSlice provider");
-      }
-    },
-    probe: (base, key) => ({ url: `${base}/agents`, headers: { "X-API-Key": key } }),
-  },
-  {
     serviceName: "anthropic",
     displayName: "Anthropic (Claude)",
     description: "The language model avatars think with. Without it calls use the hosted fallback model.",
@@ -81,19 +59,6 @@ export const API_PROVIDERS = [
       url: `${base}/v1/models?limit=1`,
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01" },
     }),
-  },
-  {
-    serviceName: "elevenlabs",
-    displayName: "ElevenLabs",
-    description: "Voice cloning and cloned voices in calls. Without a key cloning is switched off.",
-    envVar: "ELEVENLABS_API_KEY",
-    baseUrl: "https://api.elevenlabs.io",
-    documentation: "https://elevenlabs.io/docs/api-reference/introduction",
-    get: () => env.elevenlabs.apiKey,
-    set: (value) => {
-      env.elevenlabs.apiKey = value;
-    },
-    probe: (base, key) => ({ url: `${base}/v1/models`, headers: { "xi-api-key": key } }),
   },
   {
     serviceName: "kie_ai",

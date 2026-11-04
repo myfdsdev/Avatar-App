@@ -34,7 +34,7 @@ export class LemonSliceRenderer extends BaseAvatarRenderer {
   constructor({ apiKey } = {}) {
     super("lemonslice");
     if (!apiKey) {
-      throw new Error("LEMONSLICE_API_KEY is required to render LemonSlice avatars");
+      throw new Error("This workspace has no LemonSlice API key. Add one in Profile -> API keys.");
     }
     this.apiKey = apiKey;
     this.avatarSession = null;

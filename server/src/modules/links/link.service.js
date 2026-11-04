@@ -4,6 +4,7 @@ import { env } from "../../config/env.js";
 import { roomService } from "../rooms/room.service.js";
 import { isCallable } from "../avatars/avatar.service.js";
 import { fetchPicture } from "../avatars/previewImage.service.js";
+import { enterWorkspaceKeys } from "../byok/byok.context.js";
 
 /**
  * Public share links: talking to an avatar with nothing but its link.
@@ -53,6 +54,8 @@ async function ownerBlocked(avatar) {
 export const linkService = {
   async describe(token) {
     const avatar = await findAvatar(token);
+    // A guest is not signed in; the call runs on the avatar owner's keys.
+    await enterWorkspaceKeys(avatar.workspaceId);
     return {
       avatar: { name: avatar.name, previewUrl: avatar.previewUrl },
       available: isCallable(avatar) && !(await ownerBlocked(avatar)),
@@ -66,6 +69,7 @@ export const linkService = {
 
   async startCall(token, { name, email }) {
     const avatar = await findAvatar(token);
+    await enterWorkspaceKeys(avatar.workspaceId);
     if (!isCallable(avatar)) {
       const err = new Error("This avatar is not available right now. Try again later.");
       err.statusCode = 409;
@@ -118,6 +122,7 @@ export const linkService = {
     }
 
     const workspace = await Workspace.findById(avatar.workspaceId);
+    await enterWorkspaceKeys(workspace);
     await roomService.endCall({ workspace, conversationId: conversation._id });
     return { ended: true };
   },

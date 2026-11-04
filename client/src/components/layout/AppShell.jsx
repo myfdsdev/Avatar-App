@@ -4,6 +4,7 @@ import ErrorBoundary from "@/components/common/ErrorBoundary";
 import Sidebar from "./Sidebar";
 import { useUi } from "@/store/ui.store";
 import { useBranding } from "@/hooks/useBranding";
+import ApiKeysPrompt from "@/features/byok/ApiKeysPrompt";
 
 /**
  * Sidebar plus a scrolling content column.
@@ -16,6 +17,9 @@ import { useBranding } from "@/hooks/useBranding";
  *
  * Below the lg breakpoint the sidebar becomes a drawer, so the page gets the
  * full width and a slim top bar carries the button that opens it.
+ *
+ * It also carries the API key popup, so the app asks for the workspace's own
+ * vendor keys on whichever page it is opened.
  */
 export default function AppShell({ children, wide = false }) {
   const { pathname } = useLocation();
@@ -26,6 +30,7 @@ export default function AppShell({ children, wide = false }) {
   return (
     <div className="min-h-screen bg-bg">
       <Sidebar />
+      <ApiKeysPrompt />
       <div
         className={clsx(
           "min-w-0 transition-[padding] duration-200 ease-ease",

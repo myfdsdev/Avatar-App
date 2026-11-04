@@ -104,8 +104,10 @@ export const env = {
   // and a fresh clone with no keys gets an error naming the fix instead of a
   // fake avatar that looks real.
   avatarProvider: optional("AVATAR_PROVIDER"),
-  lemonsliceApiKey: optional("LEMONSLICE_API_KEY"),
 
+  // Off by default: workspaces bring their own LemonSlice / ElevenLabs keys,
+  // so calls are paid for at the vendor. "true" brings the credit system back.
+  creditsEnabled: optional("CREDITS_ENABLED", "false") === "true",
   maxCallSeconds: Number(optional("MAX_CALL_SECONDS", "3600")),
   // How long a call runs when its avatar sets no length of its own. Short on
   // purpose: a call is billed for every second it is open, and a tab left open
@@ -173,9 +175,8 @@ export const env = {
 
   // Voice cloning: someone uploads or records their own voice, ElevenLabs
   // clones it, and avatars using it speak through ElevenLabs directly (with
-  // this key) instead of LiveKit Inference. Unset means cloning is off.
+  // the workspace's own key - see modules/byok) instead of LiveKit Inference.
   elevenlabs: {
-    apiKey: optional("ELEVENLABS_API_KEY"),
     // Flash is ElevenLabs' low-latency model - what a live call needs.
     model: optional("ELEVENLABS_TTS_MODEL", "eleven_flash_v2_5"),
   },

@@ -104,7 +104,7 @@ record(
       `AVATAR_PROVIDER=${env.avatarProvider} is a local stub and overrides every real ` +
       `vendor. Unset it to use: ${real.join(", ") || "(none configured)"}`;
   } else if (!real.length) {
-    detail = "no real vendor configured - set LEMONSLICE_API_KEY to create avatars";
+    detail = "no real vendor configured - LemonSlice keys are per workspace (Profile -> API keys), so this script cannot see them";
   } else {
     detail = `${env.avatarProvider || "automatic"} - real vendors available: ${real.join(", ")}`;
   }

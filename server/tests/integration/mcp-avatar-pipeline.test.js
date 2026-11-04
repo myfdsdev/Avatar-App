@@ -10,13 +10,13 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { env } from "../../src/config/env.js";
 import { KnowledgeDocument } from "../../src/models/index.js";
-import { signUp, startTestApp } from "../helpers.js";
+import { setWorkspaceKey, signUp, startTestApp } from "../helpers.js";
 
 process.env.MCP_FACE_POLL_MS = "5";
 
 let app;
 let client;
-let stranger;
+let stranger, user;
 const realFetch = globalThis.fetch;
 const FACE = Buffer.alloc(20_000, 3);
 const SITE = "http://127.0.0.1:9";
@@ -42,7 +42,7 @@ const json = (body) => new Response(JSON.stringify(body), { status: 200, headers
 
 before(async () => {
   app = await startTestApp({ seed: false });
-  const user = await signUp(app.baseUrl);
+  user = await signUp(app.baseUrl);
   stranger = await signUp(app.baseUrl);
   const { body } = await user.post("/api/api-keys", { name: "ChatGPT" });
   client = new Client({ name: "test", version: "1" });
@@ -110,7 +110,7 @@ describe("building an avatar through MCP, start to finish", () => {
 
   test("one call: a generated face, a voice, the website learned, published with embed code", async () => {
     env.kie.apiKey = "test-key";
-    env.elevenlabs.apiKey = "eleven-key";
+    await setWorkspaceKey(user.user.workspaceId, "elevenlabs", "eleven-key");
     try {
       const voice = await call("add_voice", { elevenLabsVoiceId: "21m00Tcm4TlvDq8ikWAM", name: "Clinic voice" });
       assert.equal(voice.data.id, "elevenlabs:21m00Tcm4TlvDq8ikWAM");
@@ -144,7 +144,7 @@ describe("building an avatar through MCP, start to finish", () => {
       assert.ok(seen.kie.some((u) => u.includes("flux/kontext/generate")), "the face was generated");
     } finally {
       env.kie.apiKey = "";
-      env.elevenlabs.apiKey = "";
+      await setWorkspaceKey(user.user.workspaceId, "elevenlabs", "");
     }
   });
 

@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { env } from "../../src/config/env.js";
 import { dominantScript } from "../../src/modules/avatars/effectiveConfig.js";
 import { instructionsFor } from "../../src/agent/instructions.js";
-import { signUp, startTestApp } from "../helpers.js";
+import { setWorkspaceKey, signUp, startTestApp } from "../helpers.js";
 
 let app;
 let user;
@@ -17,15 +17,15 @@ const saved = {};
 before(async () => {
   app = await startTestApp({ seed: false });
   user = await signUp(app.baseUrl);
-  Object.assign(saved, { ttsModel: env.ttsModel, anthropic: env.anthropicApiKey, eleven: env.elevenlabs.apiKey });
+  Object.assign(saved, { ttsModel: env.ttsModel, anthropic: env.anthropicApiKey });
 });
 
 after(() => app.stop());
 
-afterEach(() => {
+afterEach(async () => {
   env.ttsModel = saved.ttsModel;
   env.anthropicApiKey = saved.anthropic;
-  env.elevenlabs.apiKey = saved.eleven;
+  await setWorkspaceKey(user.user.workspaceId, "elevenlabs", "");
 });
 
 async function newAvatar(persona = {}) {
@@ -101,8 +101,7 @@ describe("GET /api/avatars/:id/config", () => {
     assert.ok(codes(c).includes("voice_speed_ignored"));
   });
 
-  test("an ElevenLabs voice without a server key is shown as substituted, with both names", async () => {
-    env.elevenlabs.apiKey = "";
+  test("an ElevenLabs voice without the workspace's key is shown as substituted, with both names", async () => {
     const id = await newAvatar({ voice: "elevenlabs:21m00Tcm4TlvDq8ikWAM" });
     const c = await config(id);
 
@@ -111,11 +110,11 @@ describe("GET /api/avatars/:id/config", () => {
     assert.equal(c.effective.voice.substituted, true);
     const warning = c.warnings.find((w) => w.code === "voice_substituted");
     assert.match(warning.message, /21m00Tcm4TlvDq8ikWAM/);
-    assert.equal(c.warnings.filter((w) => /ELEVENLABS_API_KEY/.test(w.message) && w.code === "degraded").length, 0, "not said twice");
+    assert.equal(c.warnings.filter((w) => /ElevenLabs key/.test(w.message) && w.code === "degraded").length, 0, "not said twice");
   });
 
   test("with the key present the configured voice is the spoken one", async () => {
-    env.elevenlabs.apiKey = "eleven-key";
+    await setWorkspaceKey(user.user.workspaceId, "elevenlabs", "eleven-key");
     const id = await newAvatar({ voice: "elevenlabs:21m00Tcm4TlvDq8ikWAM" });
     const c = await config(id);
     assert.equal(c.effective.voice.spoken, "elevenlabs:21m00Tcm4TlvDq8ikWAM");

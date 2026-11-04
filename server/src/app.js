@@ -18,6 +18,7 @@ import conversationRoutes from "./modules/conversations/conversation.routes.js";
 import leadRoutes from "./modules/leads/lead.routes.js";
 import linkRoutes from "./modules/links/link.routes.js";
 import apiKeyRoutes from "./modules/apiKeys/apiKey.routes.js";
+import byokRoutes from "./modules/byok/byok.routes.js";
 import mcpRoutes from "./modules/mcp/mcp.routes.js";
 import oauthRoutes, { wellKnownRoutes } from "./modules/oauth/oauth.routes.js";
 import siteConfigRoutes from "./modules/siteConfig/siteConfig.routes.js";
@@ -122,6 +123,7 @@ export function createApp() {
   app.use("/api/rooms", requireAuth, roomRoutes);
   app.use("/api/studio", requireAuth, studioRoutes);
   app.use("/api/voices", requireAuth, voiceRoutes);
+  app.use("/api/byok", requireAuth, byokRoutes);
   app.use("/api/analytics", requireAuth, analyticsRoutes);
   app.use("/api/conversations", requireAuth, conversationRoutes);
   app.use("/api/leads", requireAuth, leadRoutes);

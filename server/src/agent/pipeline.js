@@ -12,6 +12,7 @@ import {
   ttsModelFor,
   voiceFor,
 } from "../ai/catalog.js";
+import { byokKey } from "../modules/byok/byok.context.js";
 
 /**
  * Builds the speech and language half of a call.
@@ -111,13 +112,13 @@ function buildTts(avatar) {
   const language = persona?.language || avatar?.voice?.language || env.sttLanguage;
 
   if (isElevenLabsVoice(voice)) {
-    if (env.elevenlabs.apiKey) return buildElevenLabsTts(voice, language, persona?.voiceSpeed);
+    if (byokKey("elevenlabs")) return buildElevenLabsTts(voice, language, persona?.voiceSpeed);
     // The clone still exists at ElevenLabs; the call just cannot reach it.
     // Speak with the default voice rather than not at all.
     const fallback = buildTts({ ...avatar, persona: { ...persona, voice: env.ttsVoice } });
     return {
       ...fallback,
-      note: `Cloned voice needs ELEVENLABS_API_KEY; using the default "${env.ttsVoice}".`,
+      note: `Cloned voice needs the workspace's ElevenLabs key; using the default "${env.ttsVoice}".`,
     };
   }
 
@@ -138,7 +139,7 @@ function buildTts(avatar) {
 
 /**
  * A voice the workspace cloned through ElevenLabs, spoken by ElevenLabs'
- * own plugin with the install's key - LiveKit Inference cannot reach clones
+ * own plugin with the workspace's own key - LiveKit Inference cannot reach clones
  * that live in someone else's ElevenLabs account.
  */
 function buildElevenLabsTts(voice, language, speed) {
@@ -147,7 +148,7 @@ function buildElevenLabsTts(voice, language, speed) {
 
   return {
     instance: new elevenlabs.TTS({
-      apiKey: env.elevenlabs.apiKey,
+      apiKey: byokKey("elevenlabs"),
       voiceId: elevenLabsVoiceId(voice),
       model,
       language,

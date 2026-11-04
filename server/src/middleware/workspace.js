@@ -1,5 +1,6 @@
 import { User, Workspace } from "../models/index.js";
 import { accountBlocked } from "../modules/auth/blocked.js";
+import { keysOf, withKeys } from "../modules/byok/byok.context.js";
 
 /**
  * Populates req.workspace from the authenticated token.
@@ -41,7 +42,9 @@ export async function resolveWorkspace(req, res, next) {
       throw err;
     }
 
-    next();
+    // The rest of the request runs on this workspace's own vendor keys.
+    req.byokKeys = keysOf(req.workspace);
+    withKeys(req.byokKeys, next);
   } catch (err) {
     next(err);
   }

@@ -1,3 +1,5 @@
+import { withKeys } from "../modules/byok/byok.context.js";
+
 /**
  * Validates a request against Zod schemas and replaces the raw input with the
  * parsed result, so handlers work with coerced, trusted values.
@@ -26,5 +28,8 @@ export function validate(schemas) {
 }
 
 /** Wraps an async handler so a rejected promise reaches the error middleware. */
-export const asyncHandler = (fn) => (req, res, next) =>
-  Promise.resolve(fn(req, res, next)).catch(next);
+export const asyncHandler = (fn) => (req, res, next) => {
+  const run = () => Promise.resolve(fn(req, res, next)).catch(next);
+  // The workspace's own vendor keys (see modules/byok/byok.context.js).
+  return req.byokKeys ? withKeys(req.byokKeys, run) : run();
+};

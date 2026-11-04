@@ -6,6 +6,7 @@ import {
   Subscription,
   SystemConfig,
 } from "../../models/index.js";
+import { env } from "../../config/env.js";
 
 /**
  * Credits - what calls are paid for in.
@@ -112,7 +113,15 @@ async function planContext(workspaceId) {
   return { subscription, plan };
 }
 
+/**
+ * With credits off (the default, CREDITS_ENABLED) every workspace is
+ * unlimited: the avatar video and cloned voices run on the workspace's own
+ * LemonSlice and ElevenLabs keys (bring your own key), so calls are paid for
+ * at the vendor. Answering here switches off the start check, the per-call
+ * charge and the out-of-credits enforcer at once.
+ */
 export async function isUnlimited(workspaceId) {
+  if (!env.creditsEnabled) return true;
   const { plan } = await planContext(workspaceId);
   return Boolean(plan?.unlimitedCredits);
 }
@@ -304,7 +313,7 @@ export async function summary(workspace) {
     getBalance(workspaceId),
     inFlightCredits(workspaceId),
   ]);
-  const unlimited = Boolean(plan?.unlimitedCredits);
+  const unlimited = await isUnlimited(workspaceId);
   const available = round2(balance - inFlight);
 
   return {
