@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Modal from "@/components/common/Modal";
 import Button from "@/components/common/Button";
+import { useTrainingPopup } from "@/features/dashboard/TrainingVideo";
 import ApiKeysForm, { keysComplete, useByok } from "./ApiKeysForm";
 
 /**
@@ -21,6 +22,8 @@ const dismissedThisVisit = () => {
 export default function ApiKeysPrompt() {
   const { data } = useByok();
   const [dismissed, setDismissed] = useState(dismissedThisVisit);
+  // The dashboard's training video goes first; this asks once it is closed.
+  const trainingOpen = useTrainingPopup((s) => s.open);
 
   const close = () => {
     try {
@@ -31,7 +34,7 @@ export default function ApiKeysPrompt() {
     setDismissed(true);
   };
 
-  const open = Boolean(data) && !keysComplete(data.keys) && !dismissed;
+  const open = Boolean(data) && !keysComplete(data.keys) && !dismissed && !trainingOpen;
 
   return (
     <Modal

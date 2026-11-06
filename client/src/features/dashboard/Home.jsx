@@ -9,6 +9,8 @@ import MediaPreview from "@/components/media/MediaPreview";
 import Button from "@/components/common/Button";
 import AvatarCard from "@/features/avatars/AvatarCard";
 import BannerCover from "@/features/site/BannerCover";
+import { useAuth } from "@/store/auth.store";
+import TrainingVideoModal, { shouldAutoOpenTraining, useTrainingPopup } from "@/features/dashboard/TrainingVideo";
 
 /**
  * The dashboard: a wide hero banner, a row of templates, then your avatars.
@@ -26,17 +28,35 @@ export default function Home() {
     queryKey: ["avatars"],
     queryFn: avatarApi.list,
   });
+  const userId = useAuth((s) => s.user?._id || s.user?.id);
+  const trainingOpen = useTrainingPopup((s) => s.open);
+  const setTrainingOpen = useTrainingPopup((s) => s.setOpen);
+  // Opens by itself once per visit, as soon as the dashboard is entered.
+  useEffect(() => {
+    if (shouldAutoOpenTraining(userId)) setTrainingOpen(true);
+    return () => setTrainingOpen(false);
+  }, [userId, setTrainingOpen]);
 
   return (
     <>
+      <TrainingVideoModal open={trainingOpen} onClose={() => setTrainingOpen(false)} />
+
       {/* An admin's hero banners replace the built-in hero; with none active this is the same hero as before. */}
       <BannerCover onCreate={show} fallback={<HeroCarousel avatars={avatars || []} onCreate={show} />} />
 
       <section className="mt-8 px-6">
-        <div className="border-b border-border">
+        <div className="flex items-end justify-between gap-4 border-b border-border">
           <h2 className="-mb-px inline-block border-b-[3px] border-pink pb-2.5 text-ui font-semibold uppercase tracking-wider">
             Templates
           </h2>
+          <button
+            type="button"
+            onClick={() => setTrainingOpen(true)}
+            className="mb-2 flex items-center gap-1.5 text-ui text-text-muted hover:text-text"
+          >
+            <PlayGlyph />
+            Training video
+          </button>
         </div>
         <div className="scroll-row mt-5 gap-4 pb-3">
           {PRESETS.map((preset) => (
